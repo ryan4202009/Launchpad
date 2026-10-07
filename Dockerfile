@@ -73,7 +73,8 @@ WORKDIR /app
 
 # Install application dependencies
 COPY Gemfile Gemfile.lock ./
-RUN bundle install
+RUN bundle config set mirror.https://rubygems.org http://rubygems.org && \
+    bundle install
 
 # Copy application
 COPY . .
