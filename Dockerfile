@@ -84,6 +84,9 @@ RUN mkdir -p vendor/cache \
             -o "vendor/cache/${name}-${version}.gem"; \
     done
 
+# Fix Nokogiri 1.8.2 compatibility with modern system headers
+ENV CFLAGS="-Dcanonicalize=nokogiri_canonicalize"
+
 # Install only from the local gem cache
 RUN bundle _1.17.3_ -v
 RUN bundle _1.17.3_ install --local --jobs 1 --retry 0
