@@ -64,8 +64,7 @@ RUN curl -fL \
 RUN ruby -v && ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'
 
 # Install the exact Bundler version
-RUN gem update --system 2.7.11 && \
-    gem install bundler -v "${BUNDLER_VERSION}"
+RUN gem install bundler -v "${BUNDLER_VERSION}" --source http://rubygems.org
 
 WORKDIR /app
 
