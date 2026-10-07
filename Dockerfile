@@ -73,8 +73,12 @@ WORKDIR /app
 
 # Install application dependencies
 COPY Gemfile Gemfile.lock ./
-RUN gem install bundler -v 1.17.3 --no-document && \
-    bundle _1.17.3_ install
+RUN curl -fL https://rubygems.org/downloads/bundler-1.17.3.gem \
+    -o /tmp/bundler.gem \
+    && gem install --no-document /tmp/bundler.gem \
+    && rm /tmp/bundler.gem
+
+RUN bundle _1.17.3_ install
 
 # Copy application
 COPY . .
