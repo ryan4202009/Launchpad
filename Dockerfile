@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     libreadline-dev \
     libsqlite3-dev \
     libyaml-dev \
+    libpq-dev \
     nodejs \
     sqlite3 \
     zlib1g-dev \
