@@ -109,4 +109,4 @@ ENV RAILS_ENV=development
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "bundle exec rails server -b 0.0.0.0 -p ${PORT:-3000}"]
+CMD ["sh", "-c", "bundle exec rake db:migrate && bundle exec rails server -b 0.0.0.0 -p ${PORT:-3000}"]
