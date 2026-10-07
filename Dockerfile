@@ -73,7 +73,8 @@ WORKDIR /app
 
 # Install application dependencies
 COPY Gemfile Gemfile.lock ./
-RUN bundle install
+RUN gem install bundler -v 1.17.3 --no-document && \
+    bundle _1.17.3_ install
 
 # Copy application
 COPY . .
