@@ -25,16 +25,18 @@ RUN apt-get update && apt-get install -y \
     perl \
     && rm -rf /var/lib/apt/lists/*
 
-# Build OpenSSL 1.0.2u for compatibility with Ruby 2.2.1
+# Build OpenSSL 1.0.2u with position-independent code
 RUN curl -fL \
     https://www.openssl.org/source/old/1.0.2/openssl-1.0.2u.tar.gz \
     -o /tmp/openssl.tar.gz \
     && mkdir -p /usr/src/openssl \
     && tar -xzf /tmp/openssl.tar.gz -C /usr/src/openssl --strip-components=1 \
     && cd /usr/src/openssl \
-    && ./config --prefix=/opt/openssl-1.0.2u \
+    && ./config \
+        --prefix=/opt/openssl-1.0.2u \
         --openssldir=/opt/openssl-1.0.2u \
         no-shared \
+        -fPIC \
     && make -j"$(nproc)" \
     && make install_sw \
     && rm -rf /usr/src/openssl /tmp/openssl.tar.gz
@@ -42,7 +44,7 @@ RUN curl -fL \
 ENV PATH="/opt/openssl-1.0.2u/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/openssl-1.0.2u/lib"
 
-# Download and build Ruby 2.2.1
+# Build Ruby 2.2.1
 RUN curl -fL \
     https://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.1.tar.gz \
     -o /tmp/ruby.tar.gz \
@@ -58,18 +60,19 @@ RUN curl -fL \
     && make install \
     && rm -rf /usr/src/ruby /tmp/ruby.tar.gz
 
-# Make sure Ruby can load OpenSSL
-RUN ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'
+# Verify Ruby and OpenSSL
+RUN ruby -v && ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'
 
 # Install the exact Bundler version
 RUN gem install bundler -v "${BUNDLER_VERSION}"
 
 WORKDIR /app
 
+# Install application dependencies
 COPY Gemfile Gemfile.lock ./
-
 RUN bundle install
 
+# Copy application
 COPY . .
 
 ENV RAILS_ENV=development
