@@ -64,7 +64,10 @@ RUN curl -fL \
 RUN ruby -v && ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'
 
 # Install the exact Bundler version
-RUN gem install bundler -v "${BUNDLER_VERSION}" --source http://rubygems.org
+RUN curl -fL https://rubygems.org/downloads/bundler-1.10.6.gem \
+    -o /tmp/bundler.gem \
+    && gem install /tmp/bundler.gem \
+    && rm /tmp/bundler.gem
 
 WORKDIR /app
 
