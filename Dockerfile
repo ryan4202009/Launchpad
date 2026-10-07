@@ -81,7 +81,7 @@ RUN curl -fL https://rubygems.org/downloads/bundler-1.17.3.gem \
 RUN ruby -v
 RUN bundle _1.17.3_ -v
 RUN bundle _1.17.3_ check || true
-RUN bundle _1.17.3_ install
+RUN bundle _1.17.3_ install --jobs 1 --retry 0
 
 # Copy application
 COPY . .
