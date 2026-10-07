@@ -84,10 +84,15 @@ RUN mkdir -p vendor/cache \
             -o "vendor/cache/${name}-${version}.gem"; \
     done
 
-# Fix Nokogiri 1.8.2 compatibility with modern system headers
-ENV CFLAGS="-Dcanonicalize=nokogiri_canonicalize"
+# Patch old Nokogiri for modern Linux/glibc
+RUN mkdir -p /tmp/nokogiri \
+    && cd /tmp/nokogiri \
+    && gem unpack /app/vendor/cache/nokogiri-1.8.2.gem \
+    && sed -i 's/static VALUE canonicalize(/static VALUE nokogiri_canonicalize(/' \
+        nokogiri-1.8.2/ext/nokogiri/xml_document.c \
+    && gem build nokogiri-1.8.2/nokogiri.gemspec \
+    && mv nokogiri-1.8.2.gem /app/vendor/cache/nokogiri-1.8.2.gem
 
-# Install only from the local gem cache
 RUN bundle _1.17.3_ -v
 RUN bundle _1.17.3_ install --local --jobs 1 --retry 0
 
