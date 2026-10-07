@@ -64,24 +64,29 @@ RUN curl -fL \
 RUN ruby -v && ruby -ropenssl -e 'puts OpenSSL::OPENSSL_VERSION'
 
 # Install the exact Bundler version
-RUN curl -fL https://rubygems.org/downloads/bundler-1.10.6.gem \
-    -o /tmp/bundler.gem \
-    && gem install --no-document /tmp/bundler.gem \
-    && rm /tmp/bundler.gem
-    
-WORKDIR /app
-
-# Install application dependencies
-COPY Gemfile Gemfile.lock ./
+# Install Bundler 1.17.3
 RUN curl -fL https://rubygems.org/downloads/bundler-1.17.3.gem \
     -o /tmp/bundler.gem \
     && gem install --no-document /tmp/bundler.gem \
     && rm /tmp/bundler.gem
 
-RUN ruby -v
+WORKDIR /app
+
+# Copy dependency files
+COPY Gemfile Gemfile.lock ./
+
+# Download every exact gem version from Gemfile.lock
+RUN mkdir -p vendor/cache \
+    && awk '/^    [a-zA-Z0-9_.+-]+ \([0-9]/ {gsub(/[()]/, ""); print $1, $2}' Gemfile.lock | \
+    while read -r name version; do \
+        echo "Downloading ${name}-${version}.gem"; \
+        curl -fL "https://rubygems.org/downloads/${name}-${version}.gem" \
+            -o "vendor/cache/${name}-${version}.gem"; \
+    done
+
+# Install only from the local gem cache
 RUN bundle _1.17.3_ -v
-RUN bundle _1.17.3_ check || true
-RUN bundle _1.17.3_ install --jobs 1 --retry 0
+RUN bundle _1.17.3_ install --local --jobs 1 --retry 0
 
 # Copy application
 COPY . .
