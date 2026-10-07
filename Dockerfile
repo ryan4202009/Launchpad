@@ -85,12 +85,14 @@ RUN mkdir -p vendor/cache \
     done
 
 # Patch old Nokogiri for modern Linux/glibc
+# Patch Nokogiri 1.8.2 for modern glibc headers
 RUN mkdir -p /tmp/nokogiri \
     && cd /tmp/nokogiri \
     && gem unpack /app/vendor/cache/nokogiri-1.8.2.gem \
     && sed -i 's/static VALUE canonicalize(/static VALUE nokogiri_canonicalize(/' \
         nokogiri-1.8.2/ext/nokogiri/xml_document.c \
-    && gem build nokogiri-1.8.2/nokogiri.gemspec \
+    && cd nokogiri-1.8.2 \
+    && gem build nokogiri.gemspec \
     && mv nokogiri-1.8.2.gem /app/vendor/cache/nokogiri-1.8.2.gem
 
 RUN bundle _1.17.3_ -v
