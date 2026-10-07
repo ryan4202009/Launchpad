@@ -1,33 +1,57 @@
-FROM ruby:2.2.1
+FROM debian:bookworm-slim
 
-# Install system dependencies
-RUN apt-get update && \
-    apt-get install -y \
+ENV RUBY_VERSION=2.2.1
+ENV BUNDLER_VERSION=1.10.6
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Build dependencies and runtime dependencies
+RUN apt-get update && apt-get install -y \
     build-essential \
+    bison \
+    ca-certificates \
+    curl \
+    git \
+    libffi-dev \
+    libgdbm-dev \
+    libncurses5-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libyaml-dev \
     nodejs \
     sqlite3 \
-    libsqlite3-dev \
-    libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Use the same Bundler version as the original project
-RUN gem install bundler -v 1.10.6
+# Download and build the exact Ruby version required by Launchpad
+RUN curl -fL \
+    https://cache.ruby-lang.org/pub/ruby/2.2/ruby-2.2.1.tar.gz \
+    -o /tmp/ruby.tar.gz \
+    && echo "5a4de38068eca8919cb087d338c0c2e3d72c9382c804fb27ab746e6c7819ab28  /tmp/ruby.tar.gz" | sha256sum -c - \
+    && mkdir -p /usr/src/ruby \
+    && tar -xzf /tmp/ruby.tar.gz -C /usr/src/ruby --strip-components=1 \
+    && cd /usr/src/ruby \
+    && autoconf \
+    && ./configure --disable-install-doc \
+    && make -j"$(nproc)" \
+    && make install \
+    && rm -rf /usr/src/ruby /tmp/ruby.tar.gz
+
+# Use the exact Bundler version from the original project
+RUN gem install bundler -v "${BUNDLER_VERSION}"
 
 WORKDIR /app
 
-# Install gems first for better Docker caching
+# Install the application's locked dependencies
 COPY Gemfile Gemfile.lock ./
 
 RUN bundle install
 
-# Copy the application
+# Copy Launchpad
 COPY . .
 
-# Rails environment
 ENV RAILS_ENV=development
 
-# Expose Rails
 EXPOSE 3000
 
-# Start the Rails server
 CMD ["sh", "-c", "bundle exec rails server -b 0.0.0.0 -p ${PORT:-3000}"]
