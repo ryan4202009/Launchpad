@@ -76,7 +76,7 @@ var Keyboard_Space = new function(){
     // if they have, load the keyboard
     Keyboard.prototype.checkLoaded = function(){
         numSoundsLoaded++;
-        $(".soundPack").html("Loading sounds ("+numSoundsLoaded+"/"+(4*12*numChains)+")");
+        $(".soundPack").html("Loading sounds ("+numSoundsLoaded+"/"+(4*12)+")");
         if(numSoundsLoaded == 4*12*numChains){
             loadingSongs = false;
             this.keyboardUI.loadKeyboard(this, currentSongData, currentSoundPack);
