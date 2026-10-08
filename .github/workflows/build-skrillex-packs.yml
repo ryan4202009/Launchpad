@@ -31,36 +31,39 @@ jobs:
           unzip -q "Skrillex - Bangarang.zip" -d /tmp/bangarang
           sample_root="/tmp/bangarang/Skrillex - Bangarang/Samples"
 
-          groups=(a b c d)
-          chain=1
-          for group in "${groups[@]}"; do
-            for i in $(seq 1 12); do
-              src="$sample_root/${group}${i}.wav"
-              n=$(( (chain-1)*12 + i ))
-              dst="/tmp/bangarang_pack/sounds/chain${chain}/c${n}.mp3"
+          mapfile -t samples < <(find "$sample_root" -maxdepth 1 -type f -iname '*.wav' -printf '%f\n' | sort -V)
+          sample_count="${#samples[@]}"
 
-              if [ ! -f "$src" ]; then
-                echo "Missing sample: $src"
-                exit 1
-              fi
+          if [ "$sample_count" -eq 0 ]; then
+            echo "No WAV samples found."
+            exit 1
+          fi
 
-              ffmpeg -hide_banner -loglevel error -y -i "$src" \
-                -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k "$dst"
-            done
-            chain=$((chain+1))
+          echo "Found $sample_count real Bangarang WAV samples."
+
+          for slot in $(seq 1 192); do
+            idx=$(( (slot - 1) % sample_count ))
+            src="$sample_root/${samples[$idx]}"
+
+            chain=$(( (slot - 1) / 48 + 1 ))
+            pad=$(( (slot - 1) % 48 + 1 ))
+            dst="/tmp/bangarang_pack/sounds/chain${chain}/c${pad}.mp3"
+
+            ffmpeg -hide_banner -loglevel error -y -i "$src" \
+              -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k "$dst"
           done
 
           rm -f public/zip/sounds/bangarang.zip
           (cd /tmp/bangarang_pack && zip -qr "$GITHUB_WORKSPACE/public/zip/sounds/bangarang.zip" sounds)
 
-      - name: Commit generated packs
+      - name: Commit generated pack
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public/zip/sounds/bangarang.zip public/zip/sounds/scary_monsters.zip
+          git add public/zip/sounds/bangarang.zip
           if git diff --cached --quiet; then
             echo "No generated pack changes."
             exit 0
           fi
-          git commit -m "Use real Bangarang Launchpad samples"
+          git commit -m "Build 192-pad Bangarang sample pack"
           git push
