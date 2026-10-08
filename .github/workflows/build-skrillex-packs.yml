@@ -1,0 +1,66 @@
+name: Build Skrillex Launchpad Packs
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'public/zip/sounds/*.mp3'
+      - '.github/workflows/build-skrillex-packs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-packs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install audio tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Build 48 Launchpad clips
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          build_pack() {
+            local source="$1"
+            local output="$2"
+
+            rm -rf /tmp/launchpad_pack
+            mkdir -p /tmp/launchpad_pack
+
+            duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$source")
+            clip_duration=$(awk -v d="$duration" 'BEGIN { printf "%.6f", d/48 }')
+
+            for n in $(seq 1 48); do
+              start=$(awk -v n="$n" -v d="$clip_duration" 'BEGIN { printf "%.6f", (n-1)*d }')
+              chain=$(( (n-1)/12 + 1 ))
+              mkdir -p "/tmp/launchpad_pack/sounds/chain${chain}"
+              ffmpeg -hide_banner -loglevel error -y \
+                -ss "$start" -i "$source" -t "$clip_duration" \
+                -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k \
+                "/tmp/launchpad_pack/sounds/chain${chain}/c${n}.mp3"
+            done
+
+            rm -f "$output"
+            (cd /tmp/launchpad_pack && zip -qr "$GITHUB_WORKSPACE/$output" sounds)
+          }
+
+          build_pack "public/zip/sounds/45719017.mp3" "public/zip/sounds/bangarang.zip"
+          build_pack "public/zip/sounds/Skrillex - Scary Monsters And Nice Sprites (Official Audio).mp3" "public/zip/sounds/scary_monsters.zip"
+
+      - name: Commit generated packs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/zip/sounds/bangarang.zip public/zip/sounds/scary_monsters.zip
+          if git diff --cached --quiet; then
+            echo "No generated pack changes."
+            exit 0
+          fi
+          git commit -m "Generate Skrillex Launchpad sound packs"
+          git push
