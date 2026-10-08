@@ -38,17 +38,17 @@ var Keyboard_UI_Space = new function(){
     
     // setup touchscreen, kind of works
     KeyboardUI.prototype.touchScreenSetup = function(keyboard){
-        $(".button").bind("touchstart", function(){
+        $(".button").bind("mousedown touchstart", function(){
             if (Howler.ctx.state != "running") {
                 Howler.ctx.resume();
             }
            var num = parseInt($(this).attr("buttonnum"));
            keyboard.playKey(keyPairs[num]);
-           event.preventDefault();
+           if (typeof event !== "undefined" && event.preventDefault) event.preventDefault();
            return false;
         });
         
-        $(".button").bind("touchend", function(){
+        $(".button").bind("mouseup touchend mouseleave", function(){
            var num = parseInt($(this).attr("buttonnum"));
            keyboard.releaseKey(keyPairs[num]);
            event.preventDefault();
