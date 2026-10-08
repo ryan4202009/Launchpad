@@ -4,7 +4,6 @@ on:
   push:
     branches: [master]
     paths:
-      - 'public/zip/sounds/*.mp3'
       - 'Skrillex - Bangarang.zip'
       - '.github/workflows/build-skrillex-packs.yml'
   workflow_dispatch:
@@ -53,29 +52,6 @@ jobs:
 
           rm -f public/zip/sounds/bangarang.zip
           (cd /tmp/bangarang_pack && zip -qr "$GITHUB_WORKSPACE/public/zip/sounds/bangarang.zip" sounds)
-
-      - name: Build Scary Monsters from the supplied audio
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf /tmp/scary_pack
-          mkdir -p /tmp/scary_pack
-
-          duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "public/zip/sounds/Skrillex - Scary Monsters And Nice Sprites (Official Audio).mp3")
-          clip_duration=$(awk -v d="$duration" 'BEGIN { printf "%.6f", d/48 }')
-
-          for n in $(seq 1 48); do
-            start=$(awk -v n="$n" -v d="$clip_duration" 'BEGIN { printf "%.6f", (n-1)*d }')
-            chain=$(( (n-1)/12 + 1 ))
-            mkdir -p "/tmp/scary_pack/sounds/chain${chain}"
-            ffmpeg -hide_banner -loglevel error -y \
-              -ss "$start" -i "public/zip/sounds/Skrillex - Scary Monsters And Nice Sprites (Official Audio).mp3" \
-              -t "$clip_duration" -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k \
-              "/tmp/scary_pack/sounds/chain${chain}/c${n}.mp3"
-          done
-
-          rm -f public/zip/sounds/scary_monsters.zip
-          (cd /tmp/scary_pack && zip -qr "$GITHUB_WORKSPACE/public/zip/sounds/scary_monsters.zip" sounds)
 
       - name: Commit generated packs
         run: |
