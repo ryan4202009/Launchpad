@@ -76,8 +76,8 @@ var Keyboard_Space = new function(){
     // if they have, load the keyboard
     Keyboard.prototype.checkLoaded = function(){
         numSoundsLoaded++;
-        $(".soundPack").html("Loading sounds ("+numSoundsLoaded+"/"+(4*12)+")");
-        if(numSoundsLoaded == 4*12){
+        $(".soundPack").html("Loading sounds ("+numSoundsLoaded+"/192)");
+        if(numSoundsLoaded == 192){
             loadingSongs = false;
             this.keyboardUI.loadKeyboard(this, currentSongData, currentSoundPack);
         }
@@ -149,7 +149,8 @@ var Keyboard_Space = new function(){
             this.midiKeyUp(kc);
             
             // send key code to MIDI editor
-            this.editor.recordKeyUp(kc);
+            if(this.editor && this.editor.recordKeyUp)
+                this.editor.recordKeyUp(kc);
         }
     }
     
@@ -185,7 +186,8 @@ var Keyboard_Space = new function(){
             this.midiKeyDown(kc);
             
             // send key code to midi editor
-            this.editor.recordKeyDown(kc);
+            if(this.editor && this.editor.recordKeyDown)
+                this.editor.recordKeyDown(kc);
         }
     }
     
