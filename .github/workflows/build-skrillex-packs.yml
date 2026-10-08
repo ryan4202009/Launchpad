@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - 'public/zip/sounds/*.mp3'
+      - 'Skrillex - Bangarang.zip'
       - '.github/workflows/build-skrillex-packs.yml'
   workflow_dispatch:
 
@@ -21,37 +22,60 @@ jobs:
       - name: Install audio tools
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Build 48 Launchpad clips
+      - name: Build Bangarang from the real Launchpad project
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf /tmp/bangarang /tmp/bangarang_pack
+          mkdir -p /tmp/bangarang /tmp/bangarang_pack/sounds/chain1 /tmp/bangarang_pack/sounds/chain2 /tmp/bangarang_pack/sounds/chain3 /tmp/bangarang_pack/sounds/chain4
 
-          build_pack() {
-            local source="$1"
-            local output="$2"
+          unzip -q "Skrillex - Bangarang.zip" -d /tmp/bangarang
+          sample_root="/tmp/bangarang/Skrillex - Bangarang/Samples"
 
-            rm -rf /tmp/launchpad_pack
-            mkdir -p /tmp/launchpad_pack
+          groups=(a b c d)
+          chain=1
+          for group in "${groups[@]}"; do
+            for i in $(seq 1 12); do
+              src="$sample_root/${group}${i}.wav"
+              n=$(( (chain-1)*12 + i ))
+              dst="/tmp/bangarang_pack/sounds/chain${chain}/c${n}.mp3"
 
-            duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$source")
-            clip_duration=$(awk -v d="$duration" 'BEGIN { printf "%.6f", d/48 }')
+              if [ ! -f "$src" ]; then
+                echo "Missing sample: $src"
+                exit 1
+              fi
 
-            for n in $(seq 1 48); do
-              start=$(awk -v n="$n" -v d="$clip_duration" 'BEGIN { printf "%.6f", (n-1)*d }')
-              chain=$(( (n-1)/12 + 1 ))
-              mkdir -p "/tmp/launchpad_pack/sounds/chain${chain}"
-              ffmpeg -hide_banner -loglevel error -y \
-                -ss "$start" -i "$source" -t "$clip_duration" \
-                -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k \
-                "/tmp/launchpad_pack/sounds/chain${chain}/c${n}.mp3"
+              ffmpeg -hide_banner -loglevel error -y -i "$src" \
+                -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k "$dst"
             done
+            chain=$((chain+1))
+          done
 
-            rm -f "$output"
-            (cd /tmp/launchpad_pack && zip -qr "$GITHUB_WORKSPACE/$output" sounds)
-          }
+          rm -f public/zip/sounds/bangarang.zip
+          (cd /tmp/bangarang_pack && zip -qr "$GITHUB_WORKSPACE/public/zip/sounds/bangarang.zip" sounds)
 
-          build_pack "public/zip/sounds/45719017.mp3" "public/zip/sounds/bangarang.zip"
-          build_pack "public/zip/sounds/Skrillex - Scary Monsters And Nice Sprites (Official Audio).mp3" "public/zip/sounds/scary_monsters.zip"
+      - name: Build Scary Monsters from the supplied audio
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/scary_pack
+          mkdir -p /tmp/scary_pack
+
+          duration=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "public/zip/sounds/Skrillex - Scary Monsters And Nice Sprites (Official Audio).mp3")
+          clip_duration=$(awk -v d="$duration" 'BEGIN { printf "%.6f", d/48 }')
+
+          for n in $(seq 1 48); do
+            start=$(awk -v n="$n" -v d="$clip_duration" 'BEGIN { printf "%.6f", (n-1)*d }')
+            chain=$(( (n-1)/12 + 1 ))
+            mkdir -p "/tmp/scary_pack/sounds/chain${chain}"
+            ffmpeg -hide_banner -loglevel error -y \
+              -ss "$start" -i "public/zip/sounds/Skrillex - Scary Monsters And Nice Sprites (Official Audio).mp3" \
+              -t "$clip_duration" -vn -ac 2 -ar 44100 -codec:a libmp3lame -b:a 128k \
+              "/tmp/scary_pack/sounds/chain${chain}/c${n}.mp3"
+          done
+
+          rm -f public/zip/sounds/scary_monsters.zip
+          (cd /tmp/scary_pack && zip -qr "$GITHUB_WORKSPACE/public/zip/sounds/scary_monsters.zip" sounds)
 
       - name: Commit generated packs
         run: |
@@ -62,5 +86,5 @@ jobs:
             echo "No generated pack changes."
             exit 0
           fi
-          git commit -m "Generate Skrillex Launchpad sound packs"
+          git commit -m "Use real Bangarang Launchpad samples"
           git push
