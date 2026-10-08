@@ -1,0 +1,65 @@
+name: Build Bangarang Launchpad sample pack
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "Skrillex - Bangarang.zip"
+      - ".github/workflows/build-bangarang-project-pack.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Extract the real Launchpad samples
+        run: |
+          rm -rf /tmp/bangarang
+          mkdir -p /tmp/bangarang
+          unzip -q "Skrillex - Bangarang.zip" -d /tmp/bangarang
+
+          sample_root="/tmp/bangarang/Skrillex - Bangarang/Samples"
+          out="public/zip/sounds/bangarang.zip"
+
+          rm -rf /tmp/pack public/zip/sounds/bangarang.zip
+          mkdir -p /tmp/pack/sounds/chain1 /tmp/pack/sounds/chain2 /tmp/pack/sounds/chain3 /tmp/pack/sounds/chain4
+
+          # These are the project's individual short samples, not slices of the full song.
+          # Keep one 12-pad bank from each of the first four sample groups.
+          groups=(a b c d)
+          chain=1
+          for group in "${groups[@]}"; do
+            i=1
+            while [ "$i" -le 12 ]; do
+              src="$sample_root/${group}${i}.wav"
+              dst="/tmp/pack/sounds/chain${chain}/c$(( ($chain - 1) * 12 + i )).mp3"
+
+              if [ ! -f "$src" ]; then
+                echo "Missing expected sample: $src"
+                exit 1
+              fi
+
+              ffmpeg -loglevel error -y -i "$src" -codec:a libmp3lame -b:a 128k "$dst"
+              i=$((i + 1))
+            done
+            chain=$((chain + 1))
+          done
+
+          cd /tmp/pack
+          zip -qr "$GITHUB_WORKSPACE/$out" sounds
+
+      - name: Commit generated pack
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/zip/sounds/bangarang.zip
+          git diff --cached --quiet && exit 0
+          git commit -m "Build Bangarang Launchpad sample pack"
+          git push
