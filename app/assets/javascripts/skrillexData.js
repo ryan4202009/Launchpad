@@ -1,12 +1,17 @@
 // Additional user-added Skrillex sound packs.
-// Each pack is generated from the corresponding source MP3 in public/zip/sounds/.
+//
+// The web Launchpad has 48 visible pads and four arrow-selected chains,
+// giving 192 playable pad slots in total. The Bangarang project supplied
+// by the user contains the real project samples; the GitHub Action builds
+// all 192 slot files from those samples.
 
 function makeSkrillexPackData(songNumber, songName, bpm, filename){
     var chain1 = [], chain2 = [], chain3 = [], chain4 = [];
-    for(var i = 1; i <= 12; i++) chain1.push("c"+i);
-    for(var i = 13; i <= 24; i++) chain2.push("c"+i);
-    for(var i = 25; i <= 36; i++) chain3.push("c"+i);
-    for(var i = 37; i <= 48; i++) chain4.push("c"+i);
+
+    for(var i = 1; i <= 48; i++) chain1.push("c"+i);
+    for(var i = 1; i <= 48; i++) chain2.push("c"+i);
+    for(var i = 1; i <= 48; i++) chain3.push("c"+i);
+    for(var i = 1; i <= 48; i++) chain4.push("c"+i);
 
     return {
         song_number: songNumber,
