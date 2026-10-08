@@ -77,7 +77,7 @@ var Keyboard_Space = new function(){
     Keyboard.prototype.checkLoaded = function(){
         numSoundsLoaded++;
         $(".soundPack").html("Loading sounds ("+numSoundsLoaded+"/"+(4*12)+")");
-        if(numSoundsLoaded == 4*12*numChains){
+        if(numSoundsLoaded == 4*12){
             loadingSongs = false;
             this.keyboardUI.loadKeyboard(this, currentSongData, currentSoundPack);
         }
