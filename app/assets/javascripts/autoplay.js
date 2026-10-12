@@ -103,7 +103,14 @@
       var ev = state.entries[state.index++];
       if (ev.kind === 0) { switchPack(ev.pack); continue; }
       var kc = keyCodeForPad(ev.pad);
-      if (state.releaseTimers[kc]) { clearTimeout(state.releaseTimers[kc]); delete state.releaseTimers[kc]; }
+      // A repeated hit on the same pad must end the previous key-down first.
+      // Otherwise its release timer gets cancelled and the pad can remain held,
+      // causing stuck/retriggered audio and the audible echo users reported.
+      if (state.releaseTimers[kc]) {
+        clearTimeout(state.releaseTimers[kc]);
+        delete state.releaseTimers[kc];
+        try { window.keyboard.releaseKey(kc); } catch (releaseError) {}
+      }
       try {
         window.keyboard.playKey(kc);
         (function(keyCode, holdFrames, speed) {
