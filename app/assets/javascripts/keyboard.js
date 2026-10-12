@@ -198,13 +198,13 @@ var Keyboard_Space = new function(){
         else{
             var kcInd = this.getKeyInd(kc);
             if(currentSounds[currentSoundPack][kcInd] != null){
-                // During chart autoplay, do not stop all instances of a sample on each
-                // retrigger. This allows dense note runs to overlap instead of stuttering.
-                if (!window.LAUNCHPAD_AUTOPLAY_ACTIVE) currentSounds[currentSoundPack][kcInd].stop();
+                // Stop a previous instance of this same pad before retriggering it.
+                // This prevents repeated hits of one sample from building into an echo.
+                // During autoplay, don't choke other pads in linked areas: dense chords
+                // and simultaneous notes should still be able to ring together.
+                currentSounds[currentSoundPack][kcInd].stop();
                 currentSounds[currentSoundPack][kcInd].play();
 
-                // Live keyboard play keeps linked-area choking; chart autoplay lets the
-                // recorded simultaneous notes ring together.
                 if (!window.LAUNCHPAD_AUTOPLAY_ACTIVE) currentSongData["linkedAreas"]["chain"+(currentSoundPack+1)].forEach(function(el, ind, arr){
                     // for ever linked area array
                     for(var j = 0; j < el.length; j++){
