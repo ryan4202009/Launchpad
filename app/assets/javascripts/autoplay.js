@@ -1,44 +1,78 @@
-/* Chart-based autoplay. The reference clip is analysed in the browser for the Launchpad's orange pressed-pad glow. */
+/* Chart-based autoplay. Detects the reference video's orange pressed-pad flashes. */
 (function ($) {
   "use strict";
 
   var videoUrl = "https://raw.githubusercontent.com/ryan4202009/Launchpad/master/videoplayback.mp4";
-  // The supplied YouTube link starts at 2:04; chart timestamps are relative to that point.
-  var clipStartSeconds = 124;
-  var state = { chart: [], timer: null, playing: false, startedAt: 0, index: 0, speed: 1, duration: 0, scanToken: 0, releaseTimers: {} };
-  var keyCodes = [49,50,51,52,53,54,55,56,57,48,189,187,81,87,69,82,84,89,85,73,79,80,219,221,65,83,68,70,71,72,74,75,76,186,222,13,90,88,67,86,66,78,77,188,190,191,16,-1];
+  var defaultClipStartSeconds = 124;
+  var state = {
+    chart: [], timer: null, playing: false, startedAt: 0, index: 0,
+    speed: 1, duration: 0, clipStartSeconds: defaultClipStartSeconds,
+    scanToken: 0, releaseTimers: {}
+  };
+  var fallbackKeyCodes = [
+    49,50,51,52,53,54,55,56,57,48,189,187,
+    81,87,69,82,84,89,85,73,79,80,219,221,
+    65,83,68,70,71,72,74,75,76,186,222,13,
+    90,88,67,86,66,78,77,188,190,191,16,-1
+  ];
 
   function buildUI() {
-    if ($("#autoplay_panel").length) return;
+    if ($("#autoplay_panel").length || !$(".buttons").length) return;
+
     var css = '<style id="autoplay_styles">' +
-      '#autoplay_panel{margin:18px auto;padding:14px;max-width:760px;background:#181818;color:#f4f4f4;border:1px solid #444;border-radius:10px;font:14px Arial,sans-serif;box-sizing:border-box}' +
+      '#autoplay_panel{margin:18px auto;padding:14px;max-width:900px;background:#181818;color:#f4f4f4;border:1px solid #444;border-radius:10px;font:14px Arial,sans-serif;box-sizing:border-box}' +
       '#autoplay_panel h3{margin:0 0 10px;font-size:18px}#autoplay_panel .ap-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:9px 0}' +
-      '#autoplay_panel button,#autoplay_panel select{border:0;border-radius:5px;padding:8px 12px;cursor:pointer;font-weight:600}' +
-      '#autoplay_panel button{background:#ff9d00;color:#171717}#autoplay_panel button:disabled{opacity:.5;cursor:not-allowed}' +
-      '#autoplay_panel input[type=range]{width:150px}#autoplay_status{color:#ffbd55;min-height:18px}#autoplay_help{color:#bbb;font-size:12px;line-height:1.45}' +
+      '#autoplay_panel button,#autoplay_panel select,#autoplay_panel input[type=number]{border:0;border-radius:5px;padding:8px 10px;font-weight:600;box-sizing:border-box}' +
+      '#autoplay_panel button{cursor:pointer;background:#ff9d00;color:#171717}#autoplay_panel button:disabled{opacity:.5;cursor:not-allowed}' +
+      '#autoplay_panel input[type=range]{width:115px;vertical-align:middle}#autoplay_panel input[type=number]{width:82px}' +
+      '#autoplay_status{color:#ffbd55;min-height:18px}#autoplay_help{color:#bbb;font-size:12px;line-height:1.45;margin-bottom:0}' +
       '</style>';
+
     $("head").append(css);
-    $(".buttons").after('<section id="autoplay_panel"><h3>Chart Autoplay</h3>' +
+    $(".buttons").after(
+      '<section id="autoplay_panel"><h3>Chart Autoplay</h3>' +
       '<div class="ap-row"><button id="ap_analyse">Analyse reference video</button><button id="ap_play" disabled>▶ Play chart</button><button id="ap_stop" disabled>■ Stop</button>' +
-      '<label>Speed <select id="ap_speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label></div>' +
+      '<label>Speed <select id="ap_speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>' +
+      '<label>Video start (sec) <input id="ap_start" type="number" min="0" step="0.1" value="124"></label></div>' +
       '<div class="ap-row"><label>Grid left <input id="ap_left" type="range" min="0" max="50" value="4"></label>' +
       '<label>Top <input id="ap_top" type="range" min="0" max="50" value="8"></label>' +
       '<label>Width <input id="ap_width" type="range" min="40" max="100" value="92"></label>' +
-      '<label>Height <input id="ap_height" type="range" min="30" max="100" value="82"></label></div>' +
-      '<div id="autoplay_status">Analyse the clip from 2:04 onward to build a chart from the orange pad flashes.</div>' +
-      '<p id="autoplay_help">The analyzer samples the video from 2:04 onward for orange pressed-pad glows. If the detected grid is offset, adjust the grid bounds and analyse again. The chart triggers the actual Launchpad keys, so the website sounds and orange pressed effect are used.</p>' +
-      '<video id="ap_reference_video" crossorigin="anonymous" preload="auto" playsinline style="display:none"></video></section>');
-    // The reference is only used for visual analysis; do not play its audio over the generated pads.
-    $("#ap_reference_video").prop("muted", true).attr({ src: videoUrl, playsinline: "playsinline", preload: "auto" });
+      '<label>Height <input id="ap_height" type="range" min="30" max="100" value="82"></label>' +
+      '<label>Sensitivity <input id="ap_sensitivity" type="range" min="4" max="25" value="8"><span id="ap_sensitivity_value">8%</span></label></div>' +
+      '<div id="autoplay_status">Analyse the MP4 from 2:04 onward. If the MP4 is already trimmed to that part, set Video start to 0.</div>' +
+      '<p id="autoplay_help">The analyser samples the pad grid for orange pressed flashes. Adjust the grid bounds or sensitivity if needed. Playback triggers the site’s real pad functions so you get the same sounds and orange glow. Pick speed before pressing Play.</p>' +
+      '<video id="ap_reference_video" crossorigin="anonymous" preload="metadata" playsinline style="display:none"></video></section>'
+    );
+
+    var video = document.getElementById("ap_reference_video");
+    video.muted = true;
+    video.crossOrigin = "anonymous";
+    video.src = videoUrl;
+    video.load();
+
     $("#ap_analyse").on("click", analyseVideo);
     $("#ap_play").on("click", play);
     $("#ap_stop").on("click", stop);
-    $("#ap_speed").on("change", function(){ state.speed = parseFloat(this.value) || 1; });
+    $("#ap_speed").on("change", function () {
+      state.speed = parseFloat(this.value) || 1;
+    });
+    $("#ap_sensitivity").on("input change", function () {
+      $("#ap_sensitivity_value").text(this.value + "%");
+    });
   }
 
-  function status(message) { $("#autoplay_status").text(message); }
-  function formatTime(seconds) { var m = Math.floor(seconds / 60), s = Math.floor(seconds % 60); return m + ":" + (s < 10 ? "0" : "") + s; }
-  function isOrange(r,g,b) { return r > 175 && g > 65 && g < 205 && b < 95 && r > g * 1.18; }
+  function status(message) {
+    $("#autoplay_status").text(message);
+  }
+
+  function formatTime(seconds) {
+    var m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function isOrange(r, g, b) {
+    return r > 175 && g > 65 && g < 215 && b < 110 && r > g * 1.16 && (r - b) > 70;
+  }
 
   function analyseVideo() {
     var video = document.getElementById("ap_reference_video");
@@ -48,71 +82,87 @@
     var raf = null;
     var metadataHandled = false;
     var previous = {};
+    var lastHitAt = {};
+    var startValue = parseFloat($("#ap_start").val());
+    var clipStartSeconds = isFinite(startValue) && startValue >= 0 ? startValue : defaultClipStartSeconds;
+    state.clipStartSeconds = clipStartSeconds;
     state.chart = [];
+
     $("#ap_analyse,#ap_play").prop("disabled", true);
     status("Loading reference clip…");
 
     function fail(message) {
-      if(token !== state.scanToken) return;
-      if(raf !== null) cancelAnimationFrame(raf);
+      if (token !== state.scanToken) return;
+      if (raf !== null) cancelAnimationFrame(raf);
       video.pause();
       video.playbackRate = 1;
       $("#ap_analyse").prop("disabled", false);
+      $("#ap_play").prop("disabled", !state.chart.length);
       status(message);
     }
 
-    video.onerror = function() {
-      fail("Could not load the reference video. Check that videoplayback.mp4 is public in the GitHub repo.");
+    video.onerror = function () {
+      fail("Could not load videoplayback.mp4 from GitHub. Check that the repo and MP4 are public.");
     };
 
-    video.onloadedmetadata = function() {
-      if(token !== state.scanToken || metadataHandled) return;
+    video.onloadedmetadata = function () {
+      if (token !== state.scanToken || metadataHandled) return;
       metadataHandled = true;
-      if(!isFinite(video.duration) || video.duration <= clipStartSeconds) {
-        fail("The reference video is shorter than the 2:04 starting point.");
+
+      if (!isFinite(video.duration) || video.duration <= clipStartSeconds) {
+        fail("The MP4 is " + formatTime(video.duration || 0) + " long. Set Video start to a value below that, then analyse again.");
         return;
       }
 
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Downscale very large videos before reading pixels to keep analysis responsive.
+      var scale = Math.min(1, 960 / video.videoWidth);
+      canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+      canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+      if (!canvas.width || !canvas.height) {
+        fail("The browser could not read the video's dimensions. Try reloading the page and analysing again.");
+        return;
+      }
+
       var left = parseFloat($("#ap_left").val()) / 100;
       var top = parseFloat($("#ap_top").val()) / 100;
       var width = parseFloat($("#ap_width").val()) / 100;
       var height = parseFloat($("#ap_height").val()) / 100;
-      var x0 = Math.floor(canvas.width * left);
-      var y0 = Math.floor(canvas.height * top);
-      var gw = Math.floor(canvas.width * width);
-      var gh = Math.floor(canvas.height * height);
+      var x0 = Math.max(0, Math.min(canvas.width - 1, Math.floor(canvas.width * left)));
+      var y0 = Math.max(0, Math.min(canvas.height - 1, Math.floor(canvas.height * top)));
+      var gw = Math.max(1, Math.min(canvas.width - x0, Math.floor(canvas.width * width)));
+      var gh = Math.max(1, Math.min(canvas.height - y0, Math.floor(canvas.height * height)));
       var cellW = gw / 12;
       var cellH = gh / 4;
       var lastSampleTime = -1;
-      var sampleInterval = 1 / 40;
+      var sampleInterval = 1 / 30;
+      var sensitivity = (parseFloat($("#ap_sensitivity").val()) || 8) / 100;
 
       function scanFrame() {
-        if(token !== state.scanToken) return;
+        if (token !== state.scanToken) return;
+
         var now = video.currentTime;
-        if(now >= video.duration - 0.03) {
+        if (now >= video.duration - 0.04) {
           video.pause();
           video.playbackRate = 1;
           state.duration = video.duration - clipStartSeconds;
-          state.chart.sort(function(a,b){ return a.time-b.time || a.pad-b.pad; });
+          state.chart.sort(function (a, b) { return a.time - b.time || a.pad - b.pad; });
           $("#ap_analyse").prop("disabled", false);
           $("#ap_play").prop("disabled", !state.chart.length);
           status(state.chart.length
-            ? "Chart ready: " + state.chart.length + " pad hits detected from " + formatTime(clipStartSeconds) + " onward. Adjust speed and press Play."
-            : "No orange pad flashes detected. Adjust the grid bounds and analyse again.");
+            ? "Chart ready: " + state.chart.length + " hits from " + formatTime(clipStartSeconds) + " onward. Set speed and press Play."
+            : "No pad flashes detected. Adjust Grid left/Top/Width/Height or lower Sensitivity, then analyse again.");
           return;
         }
 
-        // Video playback is analysed as it decodes, avoiding thousands of slow seek operations.
-        // At 1.5x playback this targets about 40 source-time samples per second on a 60 Hz display.
-        if(now >= clipStartSeconds && (lastSampleTime < 0 || now - lastSampleTime >= sampleInterval * 0.99)) {
+        if (now >= clipStartSeconds && (lastSampleTime < 0 || now - lastSampleTime >= sampleInterval * 0.98)) {
           lastSampleTime = now;
           try {
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-            for(var pad = 0; pad < 48; pad++) {
+
+            for (var pad = 0; pad < 48; pad++) {
               var row = Math.floor(pad / 12), col = pad % 12;
+              // Avoid pad edges, labels and the gaps between pads.
               var sx = Math.floor(x0 + col * cellW + cellW * 0.18);
               var ex = Math.floor(x0 + (col + 1) * cellW - cellW * 0.18);
               var sy = Math.floor(y0 + row * cellH + cellH * 0.18);
@@ -120,95 +170,140 @@
               var hits = 0, samples = 0;
               var stepX = Math.max(1, Math.floor((ex - sx) / 12));
               var stepY = Math.max(1, Math.floor((ey - sy) / 10));
-              for(var y = sy; y < ey; y += stepY) {
-                for(var x = sx; x < ex; x += stepX) {
+
+              for (var y = sy; y < ey; y += stepY) {
+                for (var x = sx; x < ex; x += stepX) {
                   var p = (y * canvas.width + x) * 4;
                   samples++;
-                  if(isOrange(data[p], data[p + 1], data[p + 2])) hits++;
+                  if (isOrange(data[p], data[p + 1], data[p + 2])) hits++;
                 }
               }
-              var active = samples > 0 && hits / samples > 0.12;
-              if(active && !previous[pad]) {
-                state.chart.push({ time: Math.max(0, now - clipStartSeconds), pad: pad });
+
+              var active = samples > 0 && (hits / samples) >= sensitivity;
+              if (active && !previous[pad]) {
+                // Ignore tiny visual flickers without swallowing repeated short taps.
+                if (lastHitAt[pad] === undefined || now - lastHitAt[pad] >= 0.065) {
+                  state.chart.push({ time: Math.max(0, now - clipStartSeconds), pad: pad });
+                  lastHitAt[pad] = now;
+                }
               }
               previous[pad] = !!active;
             }
-          } catch(e) {
-            fail("Browser blocked video-frame analysis (canvas/CORS). The MP4 needs to be publicly accessible.");
+          } catch (e) {
+            fail("Browser blocked video-frame analysis (canvas/CORS). The MP4 must be publicly accessible on GitHub.");
             return;
           }
+
           var progress = Math.max(0, Math.min(100, Math.round((now - clipStartSeconds) / (video.duration - clipStartSeconds) * 100)));
           status("Scanning video frames… " + progress + "%");
         }
+
         raf = requestAnimationFrame(scanFrame);
       }
 
       video.pause();
       video.playbackRate = 1.5;
-      video.onseeked = function() {
-        if(token !== state.scanToken) return;
+      video.onseeked = function () {
+        if (token !== state.scanToken) return;
         video.onseeked = null;
-        video.play().then(function() {
-          if(token === state.scanToken) raf = requestAnimationFrame(scanFrame);
-        }).catch(function() {
-          fail("Could not start video analysis. Press Analyse again and allow video playback.");
-        });
+        var startPromise = video.play();
+        if (startPromise && startPromise.then) {
+          startPromise.then(function () {
+            if (token === state.scanToken) raf = requestAnimationFrame(scanFrame);
+          }).catch(function () {
+            fail("Could not start video analysis. Press Analyse again and allow video playback.");
+          });
+        } else {
+          raf = requestAnimationFrame(scanFrame);
+        }
       };
       video.currentTime = clipStartSeconds;
     };
 
-    if(video.readyState >= 1 && video.duration) video.onloadedmetadata();
+    if (video.readyState >= 1 && video.duration) video.onloadedmetadata();
     else video.load();
   }
 
   function keyCodeForPad(pad) {
-    // Use the Launchpad app’s own pad-to-key mapping instead of maintaining a second mapping.
-    if(window.keyPairs && window.keyPairs[pad] !== undefined) return window.keyPairs[pad];
-    return keyCodes[pad];
+    // Prefer the website's actual mapping, including its browser-specific fallback.
+    if (window.keyPairs && window.keyPairs[pad] !== undefined) return window.keyPairs[pad];
+    return fallbackKeyCodes[pad];
   }
 
   function releaseAll() {
-    Object.keys(state.releaseTimers).forEach(function(kc) {
+    Object.keys(state.releaseTimers).forEach(function (kc) {
       clearTimeout(state.releaseTimers[kc]);
       delete state.releaseTimers[kc];
     });
-    if(!window.keyboard) return;
-    for(var i=0;i<48;i++) {
-      try { window.keyboard.releaseKey(keyCodeForPad(i)); } catch(e) {}
+    if (!window.keyboard || typeof window.keyboard.releaseKey !== "function") return;
+    for (var i = 0; i < 48; i++) {
+      try { window.keyboard.releaseKey(keyCodeForPad(i)); } catch (e) {}
     }
   }
-  function stop() {
+
+  function stop(silent) {
     state.playing = false;
-    if(state.timer) clearTimeout(state.timer);
+    if (state.timer) clearTimeout(state.timer);
     state.timer = null;
     releaseAll();
     $("#ap_play").prop("disabled", !state.chart.length);
     $("#ap_stop").prop("disabled", true);
-    status("Stopped.");
+    if (!silent) status("Stopped.");
   }
+
   function play() {
-    if(!state.chart.length || !window.keyboard) { status("The pad keyboard is not ready yet."); return; }
-    stop();
-    state.playing = true; state.index = 0; state.startedAt = Date.now();
-    $("#ap_play").prop("disabled", true); $("#ap_stop").prop("disabled", false);
+    if (!state.chart.length || !window.keyboard ||
+        typeof window.keyboard.playKey !== "function" ||
+        typeof window.keyboard.releaseKey !== "function") {
+      status("The pad keyboard is still loading. Wait for the sound pack to finish, then press Play.");
+      return;
+    }
+
+    stop(true);
+    state.speed = parseFloat($("#ap_speed").val()) || 1;
+    state.playing = true;
+    state.index = 0;
+    state.startedAt = Date.now();
+    var finishAt = state.chart[state.chart.length - 1].time + 0.22;
+
+    $("#ap_play").prop("disabled", true);
+    $("#ap_stop").prop("disabled", false);
+    status("Playing " + state.chart.length + " pad hits at " + state.speed + "× speed…");
+
     function tick() {
-      if(!state.playing) return;
-      var elapsed = (Date.now()-state.startedAt)/1000*state.speed;
-      while(state.index < state.chart.length && state.chart[state.index].time <= elapsed) {
+      if (!state.playing) return;
+
+      var elapsed = (Date.now() - state.startedAt) / 1000 * state.speed;
+      while (state.index < state.chart.length && state.chart[state.index].time <= elapsed) {
         var event = state.chart[state.index++];
         var keyCode = keyCodeForPad(event.pad);
-        // If the same pad is hit again quickly, replace its previous release timer
-        // so an older hit cannot cut off the newer one.
-        if(state.releaseTimers[keyCode]) clearTimeout(state.releaseTimers[keyCode]);
-        window.keyboard.playKey(keyCode);
-        (function(kc){ state.releaseTimers[kc] = setTimeout(function(){
-          delete state.releaseTimers[kc];
-          if(window.keyboard) window.keyboard.releaseKey(kc);
-        }, Math.max(70, 130/state.speed)); })(keyCode);
+        if (state.releaseTimers[keyCode]) clearTimeout(state.releaseTimers[keyCode]);
+
+        try {
+          window.keyboard.playKey(keyCode);
+          (function (kc) {
+            state.releaseTimers[kc] = setTimeout(function () {
+              delete state.releaseTimers[kc];
+              if (window.keyboard) window.keyboard.releaseKey(kc);
+            }, Math.max(70, 130 / state.speed));
+          })(keyCode);
+        } catch (e) {
+          stop(true);
+          status("Playback hit an error while triggering a pad. Reload the page after the sound pack finishes loading.");
+          return;
+        }
       }
-      if(state.index >= state.chart.length) { stop(); status("Chart finished."); return; }
-      state.timer = setTimeout(tick, 8);
+
+      // Keep the final note alive long enough to hear it; the old code stopped
+      // on the same tick as the last press and could instantly cut that note off.
+      if (state.index >= state.chart.length && elapsed >= finishAt) {
+        stop(true);
+        status("Chart finished.");
+        return;
+      }
+      state.timer = setTimeout(tick, 5);
     }
+
     tick();
   }
 
