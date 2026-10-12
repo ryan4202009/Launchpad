@@ -65,7 +65,7 @@
           state.chart.sort(function(a,b){return a.time-b.time || a.pad-b.pad;});
           $("#ap_analyse").prop("disabled", false);
           $("#ap_play").prop("disabled", !state.chart.length);
-          status(state.chart.length ? "Chart ready: "+state.chart.length+" pad hits detected. Adjust speed and press Play." : "No orange pad flashes detected. Adjust the grid bounds and analyse again.");
+          status(state.chart.length ? "Chart ready: "+state.chart.length+" pad hits detected from "+formatTime(clipStartSeconds)+" onward. Adjust speed and press Play." : "No orange pad flashes detected. Adjust the grid bounds and analyse again.");
           return;
         }
         function captureFrame() {
@@ -93,7 +93,7 @@
             return;
           }
           frame++;
-          if(frame%45===0) status("Scanning video frames… "+Math.round(frame/total*100)+"%");
+          if((frame-firstFrame)%45===0) status("Scanning video frames… "+Math.round((frame-firstFrame)/Math.max(1,total-firstFrame)*100)+"%");
           if(frame%3===0) setTimeout(scanNext,0); else scanNext();
         }
         var targetTime = Math.min(frame/fps, Math.max(0, video.duration-0.001));
