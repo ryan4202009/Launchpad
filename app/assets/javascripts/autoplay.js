@@ -3,6 +3,8 @@
   "use strict";
 
   var videoUrl = "https://raw.githubusercontent.com/ryan4202009/Launchpad/master/videoplayback.mp4";
+  // The supplied YouTube link starts at 2:04; chart timestamps are relative to that point.
+  var clipStartSeconds = 124;
   var state = { chart: [], timer: null, playing: false, startedAt: 0, index: 0, speed: 1, duration: 0, scanToken: 0 };
   var keyCodes = [49,50,51,52,53,54,55,56,57,48,189,187,81,87,69,82,84,89,85,73,79,80,219,221,65,83,68,70,71,72,74,75,76,186,222,13,90,88,67,86,66,78,77,188,190,191,16,-1];
 
@@ -23,8 +25,8 @@
       '<label>Top <input id="ap_top" type="range" min="0" max="50" value="8"></label>' +
       '<label>Width <input id="ap_width" type="range" min="40" max="100" value="92"></label>' +
       '<label>Height <input id="ap_height" type="range" min="30" max="100" value="82"></label></div>' +
-      '<div id="autoplay_status">Ready. Analyse the clip to build a chart from the orange pad flashes.</div>' +
-      '<p id="autoplay_help">The analyzer samples the video for orange pressed-pad glows. If the detected grid is offset, adjust the grid bounds and analyse again. The chart triggers the actual Launchpad keys, so the website sounds and orange pressed effect are used.</p>' +
+      '<div id="autoplay_status">Analyse the clip from 2:04 onward to build a chart from the orange pad flashes.</div>' +
+      '<p id="autoplay_help">The analyzer samples the video from 2:04 onward for orange pressed-pad glows. If the detected grid is offset, adjust the grid bounds and analyse again. The chart triggers the actual Launchpad keys, so the website sounds and orange pressed effect are used.</p>' +
       '<video id="ap_reference_video" crossorigin="anonymous" preload="auto" playsinline style="display:none"></video></section>');
     $("#ap_reference_video").attr("src", videoUrl);
     $("#ap_analyse").on("click", analyseVideo);
@@ -34,6 +36,7 @@
   }
 
   function status(message) { $("#autoplay_status").text(message); }
+  function formatTime(seconds) { var m = Math.floor(seconds / 60), s = Math.floor(seconds % 60); return m + ":" + (s < 10 ? "0" : "") + s; }
   function isOrange(r,g,b) { return r > 175 && g > 65 && g < 205 && b < 95 && r > g * 1.18; }
 
   function analyseVideo() {
@@ -47,7 +50,8 @@
     video.onloadedmetadata = function() {
       if(token !== state.scanToken) return;
       canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      var fps = 30, total = Math.floor(video.duration * fps), frame = 0;
+      var fps = 30, total = Math.floor(video.duration * fps), frame = Math.min(Math.floor(clipStartSeconds * fps), Math.max(0, total - 1));
+      var firstFrame = frame;
       var left = parseFloat($("#ap_left").val())/100, top = parseFloat($("#ap_top").val())/100;
       var width = parseFloat($("#ap_width").val())/100, height = parseFloat($("#ap_height").val())/100;
       var x0 = Math.floor(canvas.width*left), y0 = Math.floor(canvas.height*top);
@@ -79,7 +83,7 @@
                 if(isOrange(data[p],data[p+1],data[p+2])) hits++;
               }
               var active = samples && hits/samples > 0.12;
-              if(active && !previous[pad]) state.chart.push({time:frame/fps,pad:pad});
+              if(active && !previous[pad]) state.chart.push({time:(frame-firstFrame)/fps,pad:pad});
               previous[pad] = !!active;
             }
           } catch(e) {
