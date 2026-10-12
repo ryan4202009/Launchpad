@@ -76,7 +76,7 @@
       '<option value="1" selected>1×</option><option value="1.25">1.25×</option>' +
       '<option value="1.5">1.5×</option><option value="2">2×</option></select></div>' +
       '<div id="autoplay_status">' +
-      (count ? 'Ready: ' + count + ' built-in pad hits from 2:04 of the reference. Press Play performance.' : 'The built-in chart did not load. Refresh the page.') +
+      (count ? 'Ready: ' + count + ' built-in pad hits from the beginning of the reference. Press Play performance.' : 'The built-in chart did not load. Refresh the page.') +
       '</div>' +
       '<p id="autoplay_help">Plays the recorded pad sequence directly on this Launchpad. The pads light orange and use the site’s own sounds. No video player or manual analysis is involved.</p>' +
       '</section>'
