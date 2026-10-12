@@ -28,7 +28,8 @@
       '<div id="autoplay_status">Analyse the clip from 2:04 onward to build a chart from the orange pad flashes.</div>' +
       '<p id="autoplay_help">The analyzer samples the video from 2:04 onward for orange pressed-pad glows. If the detected grid is offset, adjust the grid bounds and analyse again. The chart triggers the actual Launchpad keys, so the website sounds and orange pressed effect are used.</p>' +
       '<video id="ap_reference_video" crossorigin="anonymous" preload="auto" playsinline style="display:none"></video></section>');
-    $("#ap_reference_video").attr("src", videoUrl);
+    // The reference is only used for visual analysis; do not play its audio over the generated pads.
+    $("#ap_reference_video").prop("muted", true).attr({ src: videoUrl, playsinline: "playsinline", preload: "auto" });
     $("#ap_analyse").on("click", analyseVideo);
     $("#ap_play").on("click", play);
     $("#ap_stop").on("click", stop);
