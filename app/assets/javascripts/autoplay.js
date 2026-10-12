@@ -11,7 +11,15 @@
     if (!chart || !chart.notes || !chart.notes.length) return [];
     var entries = [];
     (chart.packChanges || []).forEach(function (c) { entries.push({frame:c[0], kind:0, pack:c[1]}); });
-    chart.notes.forEach(function (n) { entries.push({frame:n.frame, kind:1, pad:n.pad, durationFrames:n.durationFrames}); });
+    // Collapse duplicate detections of the exact same pad on the exact same frame.
+    // Those are one physical press, not two separate hits.
+    var seenNotes = {};
+    chart.notes.forEach(function (n) {
+      var key = n.frame + ":" + n.pad;
+      if (seenNotes[key]) return;
+      seenNotes[key] = true;
+      entries.push({frame:n.frame, kind:1, pad:n.pad, durationFrames:n.durationFrames});
+    });
     entries.sort(function(a,b){ return a.frame-b.frame || a.kind-b.kind || (a.pad||0)-(b.pad||0); });
     return entries;
   }
@@ -112,7 +120,11 @@
         stopPlayback(); status("Performance finished"); return;
       }
     }
-    state.timer = setTimeout(tick, 1);
+    // Wake near the next chart event instead of spinning 1,000 times per second.
+    // This cuts timer overhead while still checking frequently enough for tight hits.
+    var next = state.entries[state.index];
+    var wait = next ? ((next.frame - elapsedFrame) / fps) * 1000 / state.speed : 8;
+    state.timer = setTimeout(tick, Math.max(0, Math.min(8, wait)));
   }
   function buildUI() {
     if ($("#autoplayer_panel").length || !$(".buttons").length) return;
