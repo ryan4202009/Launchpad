@@ -86,7 +86,7 @@
       var cellW = gw / 12;
       var cellH = gh / 4;
       var lastSampleTime = -1;
-      var sampleInterval = 1 / 30;
+      var sampleInterval = 1 / 40;
 
       function scanFrame() {
         if(token !== state.scanToken) return;
@@ -105,7 +105,7 @@
         }
 
         // Video playback is analysed as it decodes, avoiding thousands of slow seek operations.
-        // At 3x playback the detector still samples the source at roughly 20 frames per second.
+        // At 1.5x playback this targets about 40 source-time samples per second on a 60 Hz display.
         if(now >= clipStartSeconds && (lastSampleTime < 0 || now - lastSampleTime >= sampleInterval * 0.99)) {
           lastSampleTime = now;
           try {
@@ -144,7 +144,7 @@
       }
 
       video.pause();
-      video.playbackRate = 3;
+      video.playbackRate = 1.5;
       video.onseeked = function() {
         if(token !== state.scanToken) return;
         video.onseeked = null;
