@@ -1,7 +1,7 @@
 /* Compact built-in autoplay player for First of the Year. */
 (function ($, window) {
   "use strict";
-  var state = { entries: [], timer: null, playing: false, paused: false, speed: 1,
+  var state = { entries: [], timer: null, playing: false, paused: false, speed: 1, syncMs: 0,
     startedAt: 0, pausedAt: 0, offsetSeconds: 0, index: 0, releaseTimers: {}, currentPack: null };
 
   var fallbackKeyCodes = [49,50,51,52,53,54,55,56,57,48,189,187,81,87,69,82,84,89,85,73,79,80,219,221,65,83,68,70,71,72,74,75,76,186,222,13,90,88,67,86,66,78,77,188,190,191,16,-1];
@@ -96,7 +96,9 @@
     if (!state.playing) return;
     var chart = window.LAUNCHPAD_REFERENCE_CHART, fps = chart.fps || 30;
     // Use a monotonic clock so system clock adjustments cannot shift note timing.
-    var elapsedFrame = ((nowMs() - state.startedAt) / 1000) * state.speed * fps;
+    // Apply a small user-adjustable timing correction without changing chart data.
+    // Positive sync means trigger notes earlier; negative sync means later.
+    var elapsedFrame = (((nowMs() - state.startedAt) / 1000) * state.speed + state.syncMs / 1000) * fps;
     // Process every overdue event in order. A batch cap dropped notes when a busy
     // browser fell behind; the chart is small enough to drain the due events directly.
     while (state.index < state.entries.length && state.entries[state.index].frame <= elapsedFrame) {
@@ -135,8 +137,8 @@
   }
   function buildUI() {
     if ($("#autoplayer_panel").length || !$(".buttons").length) return;
-    $("head").append('<style id="autoplayer_styles">#autoplayer_panel{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;max-width:840px;margin:18px auto;padding:12px 16px;background:#171717;color:#f7f7f7;border:1px solid #3b3b3b;border-radius:9px;font:14px Arial,sans-serif;box-sizing:border-box}#autoplayer_panel .ap-title{font-size:16px;font-weight:700;margin-right:4px}#autoplayer_panel button{border:0;border-radius:5px;background:#ffa000;color:#171717;padding:9px 15px;font-weight:700;cursor:pointer}#autoplayer_panel button:disabled{opacity:.45;cursor:default}#autoplayer_panel label{white-space:nowrap}#ap_speed{width:150px;accent-color:#ffa000}#ap_speed_value{min-width:42px;color:#ffbd55;font-weight:700}#autoplayer_status{flex-basis:100%;font-size:12px;color:#c7c7c7;text-align:center;min-height:14px}</style>');
-    $(".buttons").after('<section id="autoplayer_panel" aria-label="Autoplayer controls"><span class="ap-title">Autoplayer - First of the year</span><button type="button" id="ap_play">▶ Play</button><button type="button" id="ap_pause" disabled>Ⅱ Pause</button><button type="button" id="ap_rewind">↶ Rewind</button><label for="ap_speed">Speed</label><input id="ap_speed" type="range" min="0.25" max="2" step="0.25" value="1"><span id="ap_speed_value">1×</span><div id="autoplayer_status"></div></section>');
+    $("head").append('<style id="autoplayer_styles">#autoplayer_panel{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;max-width:840px;margin:18px auto;padding:12px 16px;background:#171717;color:#f7f7f7;border:1px solid #3b3b3b;border-radius:9px;font:14px Arial,sans-serif;box-sizing:border-box}#autoplayer_panel .ap-title{font-size:16px;font-weight:700;margin-right:4px}#autoplayer_panel button{border:0;border-radius:5px;background:#ffa000;color:#171717;padding:9px 15px;font-weight:700;cursor:pointer}#autoplayer_panel button:disabled{opacity:.45;cursor:default}#autoplayer_panel label{white-space:nowrap}#ap_speed{width:150px;accent-color:#ffa000}#ap_speed_value{min-width:42px;color:#ffbd55;font-weight:700}#ap_sync{width:110px;accent-color:#ffa000}#ap_sync_value{min-width:48px;color:#ffbd55;font-weight:700}#autoplayer_status{flex-basis:100%;font-size:12px;color:#c7c7c7;text-align:center;min-height:14px}</style>');
+    $(".buttons").after('<section id="autoplayer_panel" aria-label="Autoplayer controls"><span class="ap-title">Autoplayer - First of the year</span><button type="button" id="ap_play">▶ Play</button><button type="button" id="ap_pause" disabled>Ⅱ Pause</button><button type="button" id="ap_rewind">↶ Rewind</button><label for="ap_speed">Speed</label><input id="ap_speed" type="range" min="0.25" max="2" step="0.25" value="1"><span id="ap_speed_value">1×</span><label for="ap_sync">Sync</label><input id="ap_sync" type="range" min="-100" max="100" step="5" value="0" title="Positive = notes earlier"><span id="ap_sync_value">0 ms</span><div id="autoplayer_status"></div></section>');
     state.entries = buildEntries();
     $("#ap_play").on("click", play); $("#ap_pause").on("click", pause); $("#ap_rewind").on("click", rewind);
     $("#ap_speed").on("input change", function() {
@@ -146,6 +148,10 @@
         state.speed = next; state.startedAt = nowMs() - position * 1000 / state.speed;
       } else state.speed = next;
       $("#ap_speed_value").text(state.speed.toFixed(2).replace(/0+$/,"").replace(/\.$/,"") + "×");
+    });
+    $("#ap_sync").on("input change", function() {
+      state.syncMs = parseInt(this.value, 10) || 0;
+      $("#ap_sync_value").text((state.syncMs > 0 ? "+" : "") + state.syncMs + " ms");
     });
     status(state.entries.length ? "Ready" : "Chart failed to load — refresh the page");
   }
