@@ -41,71 +41,119 @@
 
   function analyseVideo() {
     var video = document.getElementById("ap_reference_video");
-    var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
+    var canvas = document.createElement("canvas");
+    var ctx = canvas.getContext("2d", { willReadFrequently: true });
     var token = ++state.scanToken;
+    var raf = null;
+    var previous = {};
     state.chart = [];
     $("#ap_analyse,#ap_play").prop("disabled", true);
     status("Loading reference clip…");
-    video.onerror = function(){ if(token === state.scanToken) { status("Could not load the reference video in this browser. Check that the clip is public in the GitHub repo."); $("#ap_analyse").prop("disabled", false); } };
+
+    function fail(message) {
+      if(token !== state.scanToken) return;
+      if(raf !== null) cancelAnimationFrame(raf);
+      video.pause();
+      video.playbackRate = 1;
+      $("#ap_analyse").prop("disabled", false);
+      status(message);
+    }
+
+    video.onerror = function() {
+      fail("Could not load the reference video. Check that videoplayback.mp4 is public in the GitHub repo.");
+    };
+
     video.onloadedmetadata = function() {
       if(token !== state.scanToken) return;
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      var fps = 30, total = Math.floor(video.duration * fps), frame = Math.min(Math.floor(clipStartSeconds * fps), Math.max(0, total - 1));
-      var firstFrame = frame;
-      var left = parseFloat($("#ap_left").val())/100, top = parseFloat($("#ap_top").val())/100;
-      var width = parseFloat($("#ap_width").val())/100, height = parseFloat($("#ap_height").val())/100;
-      var x0 = Math.floor(canvas.width*left), y0 = Math.floor(canvas.height*top);
-      var gw = Math.floor(canvas.width*width), gh = Math.floor(canvas.height*height);
-      var cellW = gw/12, cellH = gh/4, previous = {};
-      status("Scanning video frames… 0%");
-      function scanNext() {
+      if(!isFinite(video.duration) || video.duration <= clipStartSeconds) {
+        fail("The reference video is shorter than the 2:04 starting point.");
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      var left = parseFloat($("#ap_left").val()) / 100;
+      var top = parseFloat($("#ap_top").val()) / 100;
+      var width = parseFloat($("#ap_width").val()) / 100;
+      var height = parseFloat($("#ap_height").val()) / 100;
+      var x0 = Math.floor(canvas.width * left);
+      var y0 = Math.floor(canvas.height * top);
+      var gw = Math.floor(canvas.width * width);
+      var gh = Math.floor(canvas.height * height);
+      var cellW = gw / 12;
+      var cellH = gh / 4;
+      var lastSampleTime = -1;
+      var sampleInterval = 1 / 30;
+
+      function scanFrame() {
         if(token !== state.scanToken) return;
-        if(frame >= total) {
-          state.duration = video.duration;
-          state.chart.sort(function(a,b){return a.time-b.time || a.pad-b.pad;});
+        var now = video.currentTime;
+        if(now >= video.duration - 0.03) {
+          video.pause();
+          video.playbackRate = 1;
+          state.duration = video.duration - clipStartSeconds;
+          state.chart.sort(function(a,b){ return a.time-b.time || a.pad-b.pad; });
           $("#ap_analyse").prop("disabled", false);
           $("#ap_play").prop("disabled", !state.chart.length);
-          status(state.chart.length ? "Chart ready: "+state.chart.length+" pad hits detected from "+formatTime(clipStartSeconds)+" onward. Adjust speed and press Play." : "No orange pad flashes detected. Adjust the grid bounds and analyse again.");
+          status(state.chart.length
+            ? "Chart ready: " + state.chart.length + " pad hits detected from " + formatTime(clipStartSeconds) + " onward. Adjust speed and press Play."
+            : "No orange pad flashes detected. Adjust the grid bounds and analyse again.");
           return;
         }
-        function captureFrame() {
-          if(token !== state.scanToken) return;
+
+        // Video playback is analysed as it decodes, avoiding thousands of slow seek operations.
+        // At 3x playback the detector still samples the source at roughly 20 frames per second.
+        if(now >= clipStartSeconds && (lastSampleTime < 0 || now - lastSampleTime >= sampleInterval * 0.99)) {
+          lastSampleTime = now;
           try {
-            ctx.drawImage(video,0,0,canvas.width,canvas.height);
-            var data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
-            for(var pad=0; pad<48; pad++) {
-              var row = Math.floor(pad/12), col = pad%12;
-              var sx = Math.floor(x0+col*cellW+cellW*.18), ex = Math.floor(x0+(col+1)*cellW-cellW*.18);
-              var sy = Math.floor(y0+row*cellH+cellH*.18), ey = Math.floor(y0+(row+1)*cellH-cellH*.18);
-              var hits=0, samples=0, stepX=Math.max(1,Math.floor((ex-sx)/12)), stepY=Math.max(1,Math.floor((ey-sy)/10));
-              for(var y=sy;y<ey;y+=stepY) for(var x=sx;x<ex;x+=stepX) {
-                var p=(y*canvas.width+x)*4; samples++;
-                if(isOrange(data[p],data[p+1],data[p+2])) hits++;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            var data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            for(var pad = 0; pad < 48; pad++) {
+              var row = Math.floor(pad / 12), col = pad % 12;
+              var sx = Math.floor(x0 + col * cellW + cellW * 0.18);
+              var ex = Math.floor(x0 + (col + 1) * cellW - cellW * 0.18);
+              var sy = Math.floor(y0 + row * cellH + cellH * 0.18);
+              var ey = Math.floor(y0 + (row + 1) * cellH - cellH * 0.18);
+              var hits = 0, samples = 0;
+              var stepX = Math.max(1, Math.floor((ex - sx) / 12));
+              var stepY = Math.max(1, Math.floor((ey - sy) / 10));
+              for(var y = sy; y < ey; y += stepY) {
+                for(var x = sx; x < ex; x += stepX) {
+                  var p = (y * canvas.width + x) * 4;
+                  samples++;
+                  if(isOrange(data[p], data[p + 1], data[p + 2])) hits++;
+                }
               }
-              var active = samples && hits/samples > 0.12;
-              if(active && !previous[pad]) state.chart.push({time:(frame-firstFrame)/fps,pad:pad});
+              var active = samples > 0 && hits / samples > 0.12;
+              if(active && !previous[pad]) {
+                state.chart.push({ time: Math.max(0, now - clipStartSeconds), pad: pad });
+              }
               previous[pad] = !!active;
             }
           } catch(e) {
-            state.scanToken++;
-            $("#ap_analyse").prop("disabled", false);
-            status("Video frame access was blocked by the browser. The clip must allow cross-origin canvas access.");
+            fail("Browser blocked video-frame analysis (canvas/CORS). The MP4 needs to be publicly accessible.");
             return;
           }
-          frame++;
-          if((frame-firstFrame)%45===0) status("Scanning video frames… "+Math.round((frame-firstFrame)/Math.max(1,total-firstFrame)*100)+"%");
-          if(frame%3===0) setTimeout(scanNext,0); else scanNext();
+          var progress = Math.max(0, Math.min(100, Math.round((now - clipStartSeconds) / (video.duration - clipStartSeconds) * 100)));
+          status("Scanning video frames… " + progress + "%");
         }
-        var targetTime = Math.min(frame/fps, Math.max(0, video.duration-0.001));
-        if(frame === 0 && Math.abs(video.currentTime-targetTime) < 0.0001) {
-          captureFrame();
-        } else {
-          video.onseeked = captureFrame;
-          video.currentTime = targetTime;
-        }
+        raf = requestAnimationFrame(scanFrame);
       }
-      scanNext();
+
+      video.pause();
+      video.playbackRate = 3;
+      video.onseeked = function() {
+        if(token !== state.scanToken) return;
+        video.onseeked = null;
+        video.play().then(function() {
+          if(token === state.scanToken) raf = requestAnimationFrame(scanFrame);
+        }).catch(function() {
+          fail("Could not start video analysis. Press Analyse again and allow video playback.");
+        });
+      };
+      video.currentTime = clipStartSeconds;
     };
+
     if(video.readyState >= 1 && video.duration) video.onloadedmetadata();
     else video.load();
   }
