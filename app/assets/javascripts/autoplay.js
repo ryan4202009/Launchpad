@@ -25,6 +25,9 @@
       '#autoplay_panel button,#autoplay_panel select,#autoplay_panel input[type=number]{border:0;border-radius:5px;padding:8px 10px;font-weight:600;box-sizing:border-box}' +
       '#autoplay_panel button{cursor:pointer;background:#ff9d00;color:#171717}#autoplay_panel button:disabled{opacity:.5;cursor:not-allowed}' +
       '#autoplay_panel input[type=range]{width:115px;vertical-align:middle}#autoplay_panel input[type=number]{width:82px}' +
+      '#ap_video_stage{position:relative;width:min(100%,840px);margin:12px auto 4px;line-height:0}' +
+      '#ap_reference_video{display:block;width:100%;height:auto;background:#080808;border-radius:5px}' +
+      '#ap_grid_overlay{position:absolute;border:2px solid rgba(255,90,40,.95);box-sizing:border-box;pointer-events:none;background-image:repeating-linear-gradient(to right,transparent 0,transparent calc(8.333333% - 1px),rgba(255,90,40,.7) calc(8.333333% - 1px),rgba(255,90,40,.7) 8.333333%),repeating-linear-gradient(to bottom,transparent 0,transparent calc(25% - 1px),rgba(255,90,40,.7) calc(25% - 1px),rgba(255,90,40,.7) 25%)}' +
       '#autoplay_status{color:#ffbd55;min-height:18px}#autoplay_help{color:#bbb;font-size:12px;line-height:1.45;margin-bottom:0}' +
       '</style>';
 
@@ -34,14 +37,14 @@
       '<div class="ap-row"><button id="ap_analyse">Analyse reference video</button><button id="ap_play" disabled>▶ Play chart</button><button id="ap_stop" disabled>■ Stop</button>' +
       '<label>Speed <select id="ap_speed"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>' +
       '<label>Video start (sec) <input id="ap_start" type="number" min="0" step="0.1" value="124"></label></div>' +
-      '<div class="ap-row"><label>Grid left <input id="ap_left" type="range" min="0" max="50" value="4"></label>' +
-      '<label>Top <input id="ap_top" type="range" min="0" max="50" value="8"></label>' +
-      '<label>Width <input id="ap_width" type="range" min="40" max="100" value="92"></label>' +
-      '<label>Height <input id="ap_height" type="range" min="30" max="100" value="82"></label>' +
+      '<div class="ap-row"><label>Grid left <input id="ap_left" type="range" min="0" max="50" value="17"></label>' +
+      '<label>Top <input id="ap_top" type="range" min="0" max="50" value="20"></label>' +
+      '<label>Width <input id="ap_width" type="range" min="40" max="100" value="66"></label>' +
+      '<label>Height <input id="ap_height" type="range" min="30" max="100" value="40"></label>' +
       '<label>Sensitivity <input id="ap_sensitivity" type="range" min="4" max="25" value="8"><span id="ap_sensitivity_value">8%</span></label></div>' +
-      '<div id="autoplay_status">Analyse the MP4 from 2:04 onward. If the MP4 is already trimmed to that part, set Video start to 0.</div>' +
-      '<p id="autoplay_help">The analyser samples the pad grid for orange pressed flashes. Adjust the grid bounds or sensitivity if needed. Playback triggers the site’s real pad functions so you get the same sounds and orange glow. Pick speed before pressing Play.</p>' +
-      '<video id="ap_reference_video" crossorigin="anonymous" preload="metadata" playsinline style="display:none"></video></section>'
+      '<div id="autoplay_status">Reference: YouTube at 2:04. The orange outline shows the pad area being analysed.</div>' +
+      '<p id="autoplay_help">The analyser detects orange flashes inside each of the 48 pad cells. The orange grid overlay shows exactly which area is scanned. This uses your repo’s MP4 copy because a YouTube player itself cannot be read by the page’s canvas analyser. Playback triggers the website’s real pad functions.</p><p style="margin:8px 0"><a href="https://www.youtube.com/watch?v=W1kkVe_lWD4&amp;t=124s" target="_blank" rel="noopener noreferrer">Open the original YouTube reference at 2:04</a></p>' +
+      '<div id="ap_video_stage"><video id="ap_reference_video" crossorigin="anonymous" preload="metadata" playsinline controls></video><div id="ap_grid_overlay"></div></div></section>'
     );
 
     var video = document.getElementById("ap_reference_video");
@@ -49,6 +52,18 @@
     video.crossOrigin = "anonymous";
     video.src = videoUrl;
     video.load();
+
+    function updateGridOverlay() {
+      var left = parseFloat($("#ap_left").val()) || 0;
+      var top = parseFloat($("#ap_top").val()) || 0;
+      var width = parseFloat($("#ap_width").val()) || 0;
+      var height = parseFloat($("#ap_height").val()) || 0;
+      $("#ap_grid_overlay").css({
+        left: left + "%", top: top + "%", width: width + "%", height: height + "%"
+      });
+    }
+    $("#ap_left,#ap_top,#ap_width,#ap_height").on("input change", updateGridOverlay);
+    updateGridOverlay();
 
     $("#ap_analyse").on("click", analyseVideo);
     $("#ap_play").on("click", play);
