@@ -64,8 +64,7 @@
           status(state.chart.length ? "Chart ready: "+state.chart.length+" pad hits detected. Adjust speed and press Play." : "No orange pad flashes detected. Adjust the grid bounds and analyse again.");
           return;
         }
-        video.currentTime = Math.min(frame/fps, Math.max(0, video.duration-0.001));
-        video.onseeked = function() {
+        function captureFrame() {
           if(token !== state.scanToken) return;
           try {
             ctx.drawImage(video,0,0,canvas.width,canvas.height);
@@ -92,7 +91,14 @@
           frame++;
           if(frame%45===0) status("Scanning video frames… "+Math.round(frame/total*100)+"%");
           if(frame%3===0) setTimeout(scanNext,0); else scanNext();
-        };
+        }
+        var targetTime = Math.min(frame/fps, Math.max(0, video.duration-0.001));
+        if(frame === 0 && Math.abs(video.currentTime-targetTime) < 0.0001) {
+          captureFrame();
+        } else {
+          video.onseeked = captureFrame;
+          video.currentTime = targetTime;
+        }
       }
       scanNext();
     };
