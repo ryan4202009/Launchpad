@@ -110,10 +110,16 @@
     else video.load();
   }
 
+  function keyCodeForPad(pad) {
+    // Use the Launchpad app’s own pad-to-key mapping instead of maintaining a second mapping.
+    if(window.keyPairs && window.keyPairs[pad] !== undefined) return window.keyPairs[pad];
+    return keyCodes[pad];
+  }
+
   function releaseAll() {
-    if(!window.keyboard || !window.keyPairs) return;
+    if(!window.keyboard) return;
     for(var i=0;i<48;i++) {
-      try { window.keyboard.releaseKey(keyCodes[i]); } catch(e) {}
+      try { window.keyboard.releaseKey(keyCodeForPad(i)); } catch(e) {}
     }
   }
   function stop() {
@@ -135,8 +141,9 @@
       var elapsed = (Date.now()-state.startedAt)/1000*state.speed;
       while(state.index < state.chart.length && state.chart[state.index].time <= elapsed) {
         var event = state.chart[state.index++];
-        window.keyboard.playKey(keyCodes[event.pad]);
-        (function(kc){ setTimeout(function(){ if(window.keyboard) window.keyboard.releaseKey(kc); }, Math.max(70, 130/state.speed)); })(keyCodes[event.pad]);
+        var keyCode = keyCodeForPad(event.pad);
+        window.keyboard.playKey(keyCode);
+        (function(kc){ setTimeout(function(){ if(window.keyboard) window.keyboard.releaseKey(kc); }, Math.max(70, 130/state.speed)); })(keyCode);
       }
       if(state.index >= state.chart.length) { stop(); status("Chart finished."); return; }
       state.timer = setTimeout(tick, 8);
