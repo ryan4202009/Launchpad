@@ -20,6 +20,7 @@
     return fallbackKeyCodes[pad];
   }
   function status(message) { $("#autoplayer_status").text(message); }
+  function nowMs() { return (window.performance && window.performance.now) ? window.performance.now() : Date.now(); }
   function clearTimer() { if (state.timer) clearTimeout(state.timer); state.timer = null; }
   function clearReleaseTimers() {
     Object.keys(state.releaseTimers).forEach(function(k){ clearTimeout(state.releaseTimers[k]); delete state.releaseTimers[k]; });
@@ -59,7 +60,7 @@
     state.currentPack = null;
     switchPack(chart.initialPack || 0);
     state.playing = true; state.paused = false;
-    state.startedAt = Date.now() - state.offsetSeconds * 1000 / state.speed;
+    state.startedAt = nowMs() - state.offsetSeconds * 1000 / state.speed;
     window.LAUNCHPAD_AUTOPLAY_ACTIVE = true;
     setButtons();
     status("Playing at " + state.speed.toFixed(2).replace(/0+$/,"").replace(/\.$/,"") + "×");
@@ -68,13 +69,13 @@
   function play() {
     if (state.paused) {
       state.playing = true; state.paused = false;
-      state.startedAt = Date.now() - state.pausedAt * 1000 / state.speed;
+      state.startedAt = nowMs() - state.pausedAt * 1000 / state.speed;
       window.LAUNCHPAD_AUTOPLAY_ACTIVE = true; setButtons(); status("Playing"); tick();
     } else if (!state.playing) startFromOffset(0);
   }
   function pause() {
     if (!state.playing) return;
-    state.pausedAt = (Date.now() - state.startedAt) / 1000 * state.speed;
+    state.pausedAt = (nowMs() - state.startedAt) / 1000 * state.speed;
     state.playing = false; state.paused = true; clearTimer(); releaseAll();
     window.LAUNCHPAD_AUTOPLAY_ACTIVE = false; setButtons(); status("Paused");
   }
@@ -86,12 +87,12 @@
   function tick() {
     if (!state.playing) return;
     var chart = window.LAUNCHPAD_REFERENCE_CHART, fps = chart.fps || 30;
-    var elapsedFrame = ((Date.now() - state.startedAt) / 1000) * state.speed * fps;
-    var burst = 0;
-    // Drain due chart events in order, but cap each batch so a delayed browser frame
-    // cannot monopolize the main thread and make the audio/pad UI hitch.
-    while (state.index < state.entries.length && state.entries[state.index].frame <= elapsedFrame && burst < 80) {
-      var ev = state.entries[state.index++]; burst++;
+    // Use a monotonic clock so system clock adjustments cannot shift note timing.
+    var elapsedFrame = ((nowMs() - state.startedAt) / 1000) * state.speed * fps;
+    // Process every overdue event in order. A batch cap dropped notes when a busy
+    // browser fell behind; the chart is small enough to drain the due events directly.
+    while (state.index < state.entries.length && state.entries[state.index].frame <= elapsedFrame) {
+      var ev = state.entries[state.index++];
       if (ev.kind === 0) { switchPack(ev.pack); continue; }
       var kc = keyCodeForPad(ev.pad);
       if (state.releaseTimers[kc]) { clearTimeout(state.releaseTimers[kc]); delete state.releaseTimers[kc]; }
@@ -111,7 +112,7 @@
         stopPlayback(); status("Performance finished"); return;
       }
     }
-    state.timer = setTimeout(tick, burst >= 80 ? 0 : 6);
+    state.timer = setTimeout(tick, 1);
   }
   function buildUI() {
     if ($("#autoplayer_panel").length || !$(".buttons").length) return;
@@ -122,8 +123,8 @@
     $("#ap_speed").on("input change", function() {
       var next = parseFloat(this.value) || 1;
       if (state.playing) {
-        var position = (Date.now() - state.startedAt) / 1000 * state.speed;
-        state.speed = next; state.startedAt = Date.now() - position * 1000 / state.speed;
+        var position = (nowMs() - state.startedAt) / 1000 * state.speed;
+        state.speed = next; state.startedAt = nowMs() - position * 1000 / state.speed;
       } else state.speed = next;
       $("#ap_speed_value").text(state.speed.toFixed(2).replace(/0+$/,"").replace(/\.$/,"") + "×");
     });
