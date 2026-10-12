@@ -45,6 +45,7 @@
     var ctx = canvas.getContext("2d", { willReadFrequently: true });
     var token = ++state.scanToken;
     var raf = null;
+    var metadataHandled = false;
     var previous = {};
     state.chart = [];
     $("#ap_analyse,#ap_play").prop("disabled", true);
@@ -64,7 +65,8 @@
     };
 
     video.onloadedmetadata = function() {
-      if(token !== state.scanToken) return;
+      if(token !== state.scanToken || metadataHandled) return;
+      metadataHandled = true;
       if(!isFinite(video.duration) || video.duration <= clipStartSeconds) {
         fail("The reference video is shorter than the 2:04 starting point.");
         return;
