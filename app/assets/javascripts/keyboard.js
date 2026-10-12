@@ -198,11 +198,13 @@ var Keyboard_Space = new function(){
         else{
             var kcInd = this.getKeyInd(kc);
             if(currentSounds[currentSoundPack][kcInd] != null){
-                // Stop a previous instance of this same pad before retriggering it.
-                // This prevents repeated hits of one sample from building into an echo.
-                // During autoplay, don't choke other pads in linked areas: dense chords
-                // and simultaneous notes should still be able to ring together.
-                currentSounds[currentSoundPack][kcInd].stop();
+                // During autoplay, let Howler start a fresh voice for each chart hit.
+                // Calling stop() first kills any active voice for this pad, which can make
+                // fast repeated notes sound skipped. Keep the old retrigger behavior for
+                // manual keyboard play, while allowing autoplay's release timer to manage
+                // hold-to-play pads.
+                if (!window.LAUNCHPAD_AUTOPLAY_ACTIVE)
+                    currentSounds[currentSoundPack][kcInd].stop();
                 currentSounds[currentSoundPack][kcInd].play();
 
                 if (!window.LAUNCHPAD_AUTOPLAY_ACTIVE) currentSongData["linkedAreas"]["chain"+(currentSoundPack+1)].forEach(function(el, ind, arr){
