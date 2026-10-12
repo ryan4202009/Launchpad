@@ -11,13 +11,15 @@
     if (!chart || !chart.notes || !chart.notes.length) return [];
     var entries = [];
     (chart.packChanges || []).forEach(function (c) { entries.push({frame:c[0], kind:0, pack:c[1]}); });
-    // Collapse duplicate detections of the exact same pad on the exact same frame.
-    // Those are one physical press, not two separate hits.
-    var seenNotes = {};
-    chart.notes.forEach(function (n) {
-      var key = n.frame + ":" + n.pad;
-      if (seenNotes[key]) return;
-      seenNotes[key] = true;
+    // Collapse duplicate detections of the same pad within 2 captured frames.
+    // The chart is sampled from video, so one visible press can be detected on
+    // neighboring frames. Keep the first detection and ignore that short burst.
+    // Different pads are never merged, and same-pad hits farther apart remain.
+    var lastPadFrame = {};
+    chart.notes.slice().sort(function(a,b){ return a.frame-b.frame || a.pad-b.pad; }).forEach(function (n) {
+      var previous = lastPadFrame[n.pad];
+      if (previous !== undefined && n.frame - previous <= 2) return;
+      lastPadFrame[n.pad] = n.frame;
       entries.push({frame:n.frame, kind:1, pad:n.pad, durationFrames:n.durationFrames});
     });
     entries.sort(function(a,b){ return a.frame-b.frame || a.kind-b.kind || (a.pad||0)-(b.pad||0); });
