@@ -5,7 +5,7 @@
   var videoUrl = "https://raw.githubusercontent.com/ryan4202009/Launchpad/master/videoplayback.mp4";
   // The supplied YouTube link starts at 2:04; chart timestamps are relative to that point.
   var clipStartSeconds = 124;
-  var state = { chart: [], timer: null, playing: false, startedAt: 0, index: 0, speed: 1, duration: 0, scanToken: 0 };
+  var state = { chart: [], timer: null, playing: false, startedAt: 0, index: 0, speed: 1, duration: 0, scanToken: 0, releaseTimers: {} };
   var keyCodes = [49,50,51,52,53,54,55,56,57,48,189,187,81,87,69,82,84,89,85,73,79,80,219,221,65,83,68,70,71,72,74,75,76,186,222,13,90,88,67,86,66,78,77,188,190,191,16,-1];
 
   function buildUI() {
@@ -168,6 +168,10 @@
   }
 
   function releaseAll() {
+    Object.keys(state.releaseTimers).forEach(function(kc) {
+      clearTimeout(state.releaseTimers[kc]);
+      delete state.releaseTimers[kc];
+    });
     if(!window.keyboard) return;
     for(var i=0;i<48;i++) {
       try { window.keyboard.releaseKey(keyCodeForPad(i)); } catch(e) {}
@@ -193,8 +197,14 @@
       while(state.index < state.chart.length && state.chart[state.index].time <= elapsed) {
         var event = state.chart[state.index++];
         var keyCode = keyCodeForPad(event.pad);
+        // If the same pad is hit again quickly, replace its previous release timer
+        // so an older hit cannot cut off the newer one.
+        if(state.releaseTimers[keyCode]) clearTimeout(state.releaseTimers[keyCode]);
         window.keyboard.playKey(keyCode);
-        (function(kc){ setTimeout(function(){ if(window.keyboard) window.keyboard.releaseKey(kc); }, Math.max(70, 130/state.speed)); })(keyCode);
+        (function(kc){ state.releaseTimers[kc] = setTimeout(function(){
+          delete state.releaseTimers[kc];
+          if(window.keyboard) window.keyboard.releaseKey(kc);
+        }, Math.max(70, 130/state.speed)); })(keyCode);
       }
       if(state.index >= state.chart.length) { stop(); status("Chart finished."); return; }
       state.timer = setTimeout(tick, 8);
