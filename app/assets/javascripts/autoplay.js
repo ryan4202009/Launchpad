@@ -98,6 +98,7 @@
     var metadataHandled = false;
     var previous = {};
     var lastHitAt = {};
+    var activeEvents = {};
     var startValue = parseFloat($("#ap_start").val());
     var clipStartSeconds = isFinite(startValue) && startValue >= 0 ? startValue : defaultClipStartSeconds;
     state.clipStartSeconds = clipStartSeconds;
@@ -160,6 +161,11 @@
           video.pause();
           video.playbackRate = 1;
           state.duration = video.duration - clipStartSeconds;
+          // If a pad is still orange at the very end, close its measured press at the clip end.
+          Object.keys(activeEvents).forEach(function (padKey) {
+            var openEvent = activeEvents[padKey];
+            openEvent.duration = Math.max(0.04, Math.min(1.5, state.duration - openEvent.time));
+          });
           state.chart.sort(function (a, b) { return a.time - b.time || a.pad - b.pad; });
           $("#ap_analyse").prop("disabled", false);
           $("#ap_play").prop("disabled", !state.chart.length);
@@ -196,11 +202,24 @@
 
               var active = samples > 0 && (hits / samples) >= sensitivity;
               if (active && !previous[pad]) {
-                // Ignore tiny visual flickers without swallowing repeated short taps.
+                // A new orange transition marks a fresh pad press.
                 if (lastHitAt[pad] === undefined || now - lastHitAt[pad] >= 0.065) {
-                  state.chart.push({ time: Math.max(0, now - clipStartSeconds), pad: pad });
+                  var pressEvent = {
+                    time: Math.max(0, now - clipStartSeconds),
+                    pad: pad,
+                    duration: 0.10
+                  };
+                  state.chart.push(pressEvent);
+                  activeEvents[pad] = pressEvent;
                   lastHitAt[pad] = now;
                 }
+              } else if (!active && previous[pad] && activeEvents[pad]) {
+                // Keep the observed orange-on time instead of forcing every pad to 130 ms.
+                activeEvents[pad].duration = Math.max(
+                  0.025,
+                  Math.min(1.5, Math.max(0, now - clipStartSeconds - activeEvents[pad].time))
+                );
+                delete activeEvents[pad];
               }
               previous[pad] = !!active;
             }
@@ -300,7 +319,7 @@
             state.releaseTimers[kc] = setTimeout(function () {
               delete state.releaseTimers[kc];
               if (window.keyboard) window.keyboard.releaseKey(kc);
-            }, Math.max(70, 130 / state.speed));
+            }, Math.max(25, ((isFinite(event.duration) ? event.duration : 0.10) * 1000) / state.speed));
           })(keyCode);
         } catch (e) {
           stop(true);
