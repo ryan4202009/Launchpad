@@ -14,4 +14,5 @@
 //= require jquery_ujs
 //= require turbolinks
 //= require skrillexData
+//= require autoplayChartData
 //= require_tree .
