@@ -366,3 +366,32 @@ img.profile_avatar_image {
   gap: 8px;
   font-weight: 400 !important;
 }
+
+
+/* Keep the Edit profile action a stable size so it doesn't collapse or
+   shift under the pointer on narrow screens. */
+.profile_card > .profile_action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 136px;
+  min-height: 44px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  box-sizing: border-box;
+  transform: none;
+  transition: none;
+}
+
+.profile_card > .profile_action:hover,
+.profile_card > .profile_action:focus {
+  transform: none;
+}
+
+@media (max-width: 520px) {
+  .profile_card > .profile_action {
+    min-width: 136px;
+    min-height: 44px;
+    padding: 12px 18px;
+  }
+}
