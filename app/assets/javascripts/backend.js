@@ -33,16 +33,16 @@ var BackendSpace = new function(){
     });
   }
   
-  // Export the current editor chart as a portable JSON file.
-  // This works without an account or a server-side database.
+  // Save charts to the website's database so they appear in the Load list.
   BackendComm.prototype.saveSong = function(notes, pid, editor, song_number){
-    var chartName = prompt("Name your chart:", "My Launchpad Chart");
+    var chartName = prompt("Name your chart:");
     if(chartName === null)
       return;
-
     chartName = chartName.trim();
-    if(!chartName)
-      chartName = "My Launchpad Chart";
+    if(!chartName){
+      alert("Please enter a chart name.");
+      return;
+    }
 
     var chartNotes;
     try {
@@ -55,40 +55,37 @@ var BackendSpace = new function(){
       return;
     }
 
-    var chart = {
-      format: "lookumz-launchpad-chart",
-      version: 1,
-      name: chartName,
-      song_number: song_number,
-      saved_at: new Date().toISOString(),
-      notes: chartNotes
-    };
-    var fileName = chartName.replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "");
-    if(!fileName)
-      fileName = "launchpad_chart";
-
-    try {
-      var blob = new Blob([JSON.stringify(chart, null, 2)], {type: "application/json;charset=utf-8"});
-      if(window.navigator.msSaveOrOpenBlob) {
-        window.navigator.msSaveOrOpenBlob(blob, fileName + ".json");
-      } else {
-        var url = window.URL.createObjectURL(blob);
-        var link = document.createElement("a");
-        link.href = url;
-        link.download = fileName + ".json";
-        link.style.display = "none";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(function(){ window.URL.revokeObjectURL(url); }, 1000);
+    $.ajax({
+      type: "POST",
+      url: "/create_song",
+      data: {
+        song_data: JSON.stringify(chartNotes),
+        id: pid,
+        name: chartName,
+        songNum: song_number
+      },
+      headers: {
+        "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content")
+      },
+      success: function(data) {
+        if(data.data === "nil"){
+          alert("You must be logged in to save charts. Please log in and try again.");
+          $("#gray_background").css("display","block");
+          $("#login_form").css("display","block");
+        } else if(data.data === "null" || data.data === null) {
+          alert("Chart was not saved. Please try again.");
+        } else {
+          editor.notesSaved(parseInt(data.data, 10));
+          alert('Chart "' + chartName + '" was saved to the website. Open Load to find it later.');
+        }
+      },
+      error: function(xhr, textStatus, errorThrown) {
+        console.error("Chart save failed:", errorThrown);
+        alert("Could not save the chart to the website. Please try again.");
       }
-      alert('Chart "' + chartName + '" was saved as ' + fileName + '.json. Keep the file somewhere safe.');
-    } catch(error) {
-      console.error(error);
-      alert("Could not download the chart. Please try again.");
-    }
+    });
   }
-  
+
   BackendComm.prototype.loadSongs = function(editor, song_number){
     $.ajax({
       type: "POST",
