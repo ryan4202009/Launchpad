@@ -1,4 +1,8 @@
 $(document).ready(function(){
+    // Profile and edit-profile pages share the application layout, but do not
+    // contain the Launchpad. Do not start loading audio on those pages.
+    if (!$(".buttons").length || !$(".soundPack").length) return;
+
     Zip_Space.initialize();
     
     keyboard = Keyboard_Space.initKeyboard(true);
