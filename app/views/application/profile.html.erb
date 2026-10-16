@@ -14,6 +14,23 @@
       <% end %>
     </div>
 
+    <div class="profile_saved_songs">
+      <h2>Saved Songs (<%= @profile_songs.length %>)</h2>
+      <% if @profile_songs.any? %>
+        <% @profile_songs.each do |song| %>
+          <div class="profile_saved_song">
+            <div class="profile_saved_song_info">
+              <strong><%= song.name.presence || "Untitled chart" %></strong>
+              <span class="profile_muted">Saved <%= song.updated_at.strftime("%b %-d, %Y") %></span>
+            </div>
+            <a class="profile_action" data-no-turbolink="true" href="<%= root_path(load_song_id: song.id) %>">Use song</a>
+          </div>
+        <% end %>
+      <% else %>
+        <p class="profile_muted">No saved songs yet. Save a chart from the Launchpad editor and it will appear here.</p>
+      <% end %>
+    </div>
+
     <% if @current_user && @current_user.id == @profile_user.id %>
       <a class="profile_action" data-no-turbolink="true" href="<%= edit_profile_path %>">Edit profile</a>
     <% end %>
