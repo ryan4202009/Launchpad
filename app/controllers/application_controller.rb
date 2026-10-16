@@ -34,15 +34,18 @@ class ApplicationController < ActionController::Base
       return
     end
 
-    @user.username = params[:username].to_s.strip
-    @user.bio = params[:bio].to_s.strip
+    @user.assign_attributes(
+      username: params[:username].to_s.strip,
+      bio: params[:bio].to_s.strip
+    )
 
-    # Run model validations first, then enforce profile field limits.
-    @user.valid?
+    # Keep the user's entered values on the form and explain limits before saving.
     @user.errors.add(:username, "is too long (maximum is 40 characters)") if @user.username.to_s.length > 40
     @user.errors.add(:bio, "is too long (maximum is 500 characters)") if @user.bio.to_s.length > 500
 
-    if @user.errors.empty? && @user.save
+    if @user.errors.any?
+      render "edit_profile"
+    elsif @user.update_attributes(username: @user.username, bio: @user.bio)
       redirect_to user_profile_path(username: @user.username), notice: "Profile updated!"
     else
       render "edit_profile"
