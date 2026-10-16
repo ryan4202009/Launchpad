@@ -1,0 +1,30 @@
+<div class="profile_page">
+  <div class="profile_card profile_edit_card">
+    <p class="profile_eyebrow">YOUR ACCOUNT</p>
+    <h1>Edit your profile</h1>
+    <p class="profile_muted">Choose the name other players see and tell them a little about yourself.</p>
+
+    <% if @user.errors.any? %>
+      <div class="profile_errors">
+        <strong>Please fix the following:</strong>
+        <ul>
+          <% @user.errors.full_messages.each do |message| %>
+            <li><%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <%= form_tag(edit_profile_path, method: :post, class: "profile_form") do %>
+      <label for="profile_username">Username</label>
+      <%= text_field_tag :username, @user.username, id: "profile_username", maxlength: 40, required: true, autocomplete: "username" %>
+
+      <label for="profile_bio">Bio</label>
+      <%= text_area_tag :bio, @user.bio, id: "profile_bio", maxlength: 500, rows: 5, placeholder: "What kind of music do you play?" %>
+      <p class="profile_hint">Up to 500 characters. Your bio is visible to anyone who visits your public profile.</p>
+
+      <%= submit_tag "Save profile", class: "profile_action" %>
+    <% end %>
+    <a class="profile_back" href="<%= user_profile_path(username: @user.username) %>">Cancel</a>
+  </div>
+</div>
