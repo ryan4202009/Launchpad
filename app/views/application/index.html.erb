@@ -1,4 +1,5 @@
 <h1>Online Launchpad</h1>
+<% if flash[:notice].present? %><div id="auth_notice"><%= flash[:notice] %></div><% end %>
 
 <% if session[:user_id] != nil %>
 <div id="signout_button"><a href="logout">Sign Out</a></div>
@@ -103,15 +104,29 @@
 </div>
 
 <div id="login_form">
-  <div>
+  <div id="auth_login_panel">
+    <h2>Log in to Launchpad</h2>
     <label>Username</label>
-    <input type="text" name="username" id="login_username"/>
-  </div>
-  <div>
+    <input type="text" name="username" id="login_username" autocomplete="username"/>
     <label>Password</label>
-    <input type="password" name="password" id="login_password"/>
+    <input type="password" name="password" id="login_password" autocomplete="current-password"/>
+    <div id="submit_login" class="auth_action">Login</div>
+    <p>New here? <a href="#" id="show_signup">Create an account</a></p>
   </div>
-  <div id="submit_login">Login</div>
+  <div id="auth_signup_panel" style="display:none">
+    <h2>Create your account</h2>
+    <label>Username</label>
+    <input type="text" id="signup_username" autocomplete="username" maxlength="40"/>
+    <label>Email address</label>
+    <input type="email" id="signup_email" autocomplete="email"/>
+    <label>Password (at least 8 characters)</label>
+    <input type="password" id="signup_password" autocomplete="new-password"/>
+    <label>Confirm password</label>
+    <input type="password" id="signup_password_confirm" autocomplete="new-password"/>
+    <div id="submit_signup" class="auth_action">Sign up</div>
+    <p>Already registered? <a href="#" id="show_login">Back to login</a></p>
+    <p id="signup_message" role="status"></p>
+  </div>
 </div>
 
 <div id="load_songs"></div>
