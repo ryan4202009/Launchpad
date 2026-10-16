@@ -301,3 +301,28 @@
     width: 100%;
   }
 }
+
+
+/* Owner badge shown on the Launchpad owner's profile. */
+.profile_name_heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.owner_tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid #d8c58b;
+  border-radius: 6px;
+  background: #fff3c4;
+  color: #604700;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  line-height: 1.2;
+  vertical-align: middle;
+}
