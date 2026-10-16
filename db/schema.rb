@@ -24,6 +24,7 @@ ActiveRecord::Schema.define(version: 20261016130000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.text     "avatar_data"
     t.string   "username"
     t.string   "password_digest"
     t.datetime "created_at",      null: false
