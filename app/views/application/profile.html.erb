@@ -2,7 +2,7 @@
   <div class="profile_card">
     <div class="profile_avatar" aria-hidden="true"><%= @profile_user.username.to_s[0, 1].to_s.upcase %></div>
     <p class="profile_eyebrow">LAUNCHPAD PLAYER</p>
-    <h1><%= @profile_user.username %></h1>
+    <h1 class="profile_name_heading"><%= @profile_user.username %> <% if @profile_user.username.to_s.casecmp("Lookumz").zero? %><span class="owner_tag" title="Launchpad owner">OWNER</span><% end %></h1>
     <p class="profile_joined">Member since <%= @profile_user.created_at.strftime("%B %Y") %></p>
 
     <div class="profile_bio">
