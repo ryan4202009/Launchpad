@@ -36,9 +36,15 @@ var Zip_Space = new function(){
     // get request for zip file
     this.dataArray = {};
     var xhr = new XMLHttpRequest()
-    xhr.open("GET", 'zip/sounds/'+name+'.zip')
+    xhr.open("GET", '/zip/sounds/'+name+'.zip')
     xhr.responseType = "blob"
     xhr.onload = function(){
+        if (xhr.status < 200 || xhr.status >= 300 || !xhr.response || xhr.response.size === 0) {
+          console.error("Sound pack request failed:", xhr.status, name);
+          $(".soundPack").html("Could not load sounds. Please refresh the page.");
+          $("#error_msg").html("Sound pack failed to load (HTTP " + xhr.status + "). Please refresh the page.");
+          return;
+        }
         // console.log(xhr.response)
         // create the zip reader for the zip file blob
         zip.createReader(new zip.BlobReader(xhr.response), function(reader) {
@@ -52,7 +58,12 @@ var Zip_Space = new function(){
           $("#error_msg").html("There was a critical error. Try clearing your browser's cache or check back later.");
         });
     }
-    xhr.send()
+    xhr.onerror = function(){
+      console.error("Network error loading sound pack:", name);
+      $(".soundPack").html("Could not load sounds. Please refresh the page.");
+      $("#error_msg").html("Could not connect to the sound files. Please refresh the page.");
+    };
+    xhr.send();
     $(".soundPack").html("Loading main sound file...");
   }
 }
