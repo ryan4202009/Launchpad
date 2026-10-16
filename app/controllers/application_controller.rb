@@ -6,7 +6,46 @@ class ApplicationController < ActionController::Base
   end
 
   def index
+    @current_user = User.find_by(id: session[:user_id]) if session[:user_id].present?
     render "index"
+  end
+
+  def profile
+    @profile_user = User.find_by(username: params[:username])
+    unless @profile_user
+      head :not_found
+      return
+    end
+    @current_user = User.find_by(id: session[:user_id]) if session[:user_id].present?
+  end
+
+  def edit_profile
+    @user = User.find_by(id: session[:user_id]) if session[:user_id].present?
+    unless @user
+      redirect_to root_path
+      return
+    end
+  end
+
+  def update_profile
+    @user = User.find_by(id: session[:user_id]) if session[:user_id].present?
+    unless @user
+      redirect_to root_path
+      return
+    end
+
+    @user.username = params[:username].to_s.strip
+    @user.bio = params[:bio].to_s.strip
+
+    @user.valid?
+    @user.errors.add(:username, "is too long (maximum is 40 characters)") if @user.username.to_s.length > 40
+    @user.errors.add(:bio, "is too long (maximum is 500 characters)") if @user.bio.to_s.length > 500
+
+    if @user.errors.empty? && @user.save
+      redirect_to user_profile_path(username: @user.username), notice: "Profile updated!"
+    else
+      render "edit_profile"
+    end
   end
 
   def logout
