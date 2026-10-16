@@ -10,29 +10,87 @@ var BackendSpace = new function(){
       $("#login_form").css("display","none");
       $("#load_songs").css("display","none");
     });
-    
+
+    function authHeaders() {
+      return {"X-CSRF-Token": $('meta[name="csrf-token"]').attr("content")};
+    }
+
+    $("#show_signup").click(function(event) {
+      event.preventDefault();
+      $("#auth_login_panel").hide();
+      $("#auth_signup_panel").show();
+      $("#signup_message").text("");
+    });
+
+    $("#show_login").click(function(event) {
+      event.preventDefault();
+      $("#auth_signup_panel").hide();
+      $("#auth_login_panel").show();
+    });
+
     $("#submit_login").click(function() {
       $.ajax({
         type: "POST",
         url: "/login",
         data: {username: $("#login_username").val(), password: $("#login_password").val()},
-        success: function(data, textStatus, jqXHR) {
-          console.log(data);
-          if(data.message == "success"){
-            $("#login_form").css("display", "none");
-            $("#gray_background").css("display", "none");
+        headers: authHeaders(),
+        success: function(data) {
+          if(data.message === "success") {
+            $("#login_form").hide();
+            $("#gray_background").hide();
+            window.location.reload();
+          } else if(data.message === "unverified") {
+            alert("Please verify your email using the link we sent before logging in.");
+          } else {
+            alert("Login failed. Check your username and password.");
           }
-          else
-            alert("There was an error");
         },
-        error: function(jqXHR, textStatus, errorThrown) {
-            console.log("Error=" + errorThrown);
-            alert("There was an error");
+        error: function() {
+          alert("Could not log in right now. Please try again.");
+        }
+      });
+    });
+
+    $("#submit_signup").click(function() {
+      var password = $("#signup_password").val();
+      if(password !== $("#signup_password_confirm").val()) {
+        $("#signup_message").text("The passwords do not match.");
+        return;
+      }
+      $("#submit_signup").text("Creating account...").css("pointer-events", "none");
+      $.ajax({
+        type: "POST",
+        url: "/signup",
+        data: {
+          username: $("#signup_username").val(),
+          email: $("#signup_email").val(),
+          password: password
+        },
+        headers: authHeaders(),
+        success: function(data) {
+          if(data.message === "verification_sent") {
+            $("#signup_message").text("Account created! Check your inbox for a verification link, then log in.");
+            $("#signup_username, #signup_email, #signup_password, #signup_password_confirm").val("");
+          } else if(data.message === "password_short") {
+            $("#signup_message").text("Use a password with at least 8 characters.");
+          } else if(data.message === "email_failed") {
+            $("#signup_message").text("Your account was created, but the verification email could not be sent. Please try again later or contact the site owner.");
+          } else if(data.message === "invalid") {
+            $("#signup_message").text((data.errors || ["Please check your details."]).join(" "));
+          } else {
+            $("#signup_message").text("Could not create the account. Please try again.");
+          }
+        },
+        error: function() {
+          $("#signup_message").text("Could not create the account. Please try again.");
+        },
+        complete: function() {
+          $("#submit_signup").text("Sign up").css("pointer-events", "auto");
         }
       });
     });
   }
-  
+
   // Save charts to the website's database so they appear in the Load list.
   BackendComm.prototype.saveSong = function(notes, pid, editor, song_number){
     var chartName = prompt("Name your chart:");
