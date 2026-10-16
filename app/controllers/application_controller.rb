@@ -17,10 +17,6 @@ class ApplicationController < ActionController::Base
   def login
     @user = User.find_by(username: params[:username])
     if @user && @user.authenticate(params[:password])
-      unless @user.email_verified?
-        render :json => {"message" => "unverified"}
-        return
-      end
       session[:user_id] = @user.id
       render :json => {"message" => "success"}
     else
@@ -39,17 +35,13 @@ class ApplicationController < ActionController::Base
     end
 
     @user = User.new(username: username, email: email, password: password)
-    @user.verification_token = SecureRandom.urlsafe_base64(32)
+    # Email verification is temporarily disabled so signup does not depend on SMTP.
+    @user.email_verified_at = Time.now
+    @user.verification_token = nil
+
     if @user.save
-      begin
-        verification_url = verify_email_url(@user.verification_token,
-          host: request.host_with_port, protocol: request.ssl? ? "https" : "http")
-        UserMailer.verification_email(@user, verification_url).deliver
-        render :json => {"message" => "verification_sent"}
-      rescue => error
-        Rails.logger.error("Signup verification email failed: #{error.class}: #{error.message}")
-        render :json => {"message" => "email_failed"}
-      end
+      session[:user_id] = @user.id
+      render :json => {"message" => "success"}
     else
       render :json => {"message" => "invalid", "errors" => @user.errors.full_messages}
     end
