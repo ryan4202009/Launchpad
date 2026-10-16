@@ -214,10 +214,12 @@
 }
 #top_account_actions .top_account_button {
   display: inline-block;
-  border: 1px solid #7654b5;
+  border: 1px solid rgba(167, 139, 250, 0.55);
   border-radius: 6px;
-  background: #281747;
-  color: #fff;
+  background: rgba(124, 58, 237, 0.18);
+  color: #f5f3ff;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   padding: 9px 13px;
   font: inherit;
   font-size: 14px;
@@ -226,7 +228,7 @@
   cursor: pointer;
 }
 #top_account_actions .top_account_button:hover {
-  background: #493071;
+  background: rgba(124, 58, 237, 0.35);
   text-decoration: none;
 }
 @media (max-width: 600px) {
