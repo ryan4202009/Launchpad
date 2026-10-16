@@ -18,8 +18,6 @@ var BackendSpace = new function(){
         data: {username: $("#login_username").val(), password: $("#login_password").val()},
         success: function(data, textStatus, jqXHR) {
           console.log(data);
-          // console.log(textStatus);
-          // console.log(jqXHR);
           if(data.message == "success"){
             $("#login_form").css("display", "none");
             $("#gray_background").css("display", "none");
@@ -35,42 +33,60 @@ var BackendSpace = new function(){
     });
   }
   
+  // Export the current editor chart as a portable JSON file.
+  // This works without an account or a server-side database.
   BackendComm.prototype.saveSong = function(notes, pid, editor, song_number){
-    alert("Saving songs not yet supported");
-    /*
-    var loadSongName = "";
-    setTimeout(function(){
-      if(pid == -1)
-        loadSongName = prompt("Enter song name");
-      $.ajax({
-        type: "POST",
-        url: "/create_song",
-        data: {song_data: notes, id: pid, name: loadSongName, songNum: song_number},
-        success: function(data, textStatus, jqXHR) {
-          // console.log(data);
-          // console.log(textStatus);
-          // console.log(jqXHR);
-          // console.log(data.data.song_data);
-          if(data.data == "null")
-            alert("Not Saved, try again");
-          else if(data.data == "nil"){
-            alert("You must be logged in");
-            $("#gray_background").css("display","block");
-            $("#login_form").css("display", "block");
-          }
-          else{
-            alert("Song successfully saved");
-            // send project id back to editor (if new project, will be new pid)
-            editor.notesSaved(data.data);
-          }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-          console.log("Error=" + errorThrown);
-          alert("Not Saved, try again");
-        }
-      });
-    },100);
-    */
+    var chartName = prompt("Name your chart:", "My Launchpad Chart");
+    if(chartName === null)
+      return;
+
+    chartName = chartName.trim();
+    if(!chartName)
+      chartName = "My Launchpad Chart";
+
+    var chartNotes;
+    try {
+      chartNotes = typeof notes === "string" ? JSON.parse(notes) : notes;
+      if(!Array.isArray(chartNotes))
+        throw new Error("Chart data must be a list of notes.");
+    } catch(error) {
+      alert("Could not save this chart because its note data is invalid.");
+      console.error(error);
+      return;
+    }
+
+    var chart = {
+      format: "lookumz-launchpad-chart",
+      version: 1,
+      name: chartName,
+      song_number: song_number,
+      saved_at: new Date().toISOString(),
+      notes: chartNotes
+    };
+    var fileName = chartName.replace(/[^a-z0-9_-]+/gi, "_").replace(/^_+|_+$/g, "");
+    if(!fileName)
+      fileName = "launchpad_chart";
+
+    try {
+      var blob = new Blob([JSON.stringify(chart, null, 2)], {type: "application/json;charset=utf-8"});
+      if(window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, fileName + ".json");
+      } else {
+        var url = window.URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = fileName + ".json";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(function(){ window.URL.revokeObjectURL(url); }, 1000);
+      }
+      alert('Chart "' + chartName + '" was saved as ' + fileName + '.json. Keep the file somewhere safe.');
+    } catch(error) {
+      console.error(error);
+      alert("Could not download the chart. Please try again.");
+    }
   }
   
   BackendComm.prototype.loadSongs = function(editor, song_number){
@@ -79,9 +95,6 @@ var BackendSpace = new function(){
       url: "/view_all_songs",
       data: {songNum: song_number},
       success: function(data, textStatus, jqXHR) {
-        // console.log(data);
-        // console.log(textStatus);
-        // console.log(jqXHR);
         $("#gray_background").css("display", "block");
         $("#load_songs").css("display", "block");
         $(".loaded_song").remove();
