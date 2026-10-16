@@ -49,9 +49,13 @@ class ApplicationController < ActionController::Base
       render :json => {"message" => "invalid", "errors" => @user.errors.full_messages}
     end
   rescue StandardError => e
-    Rails.logger.error("SIGNUP_ERROR #{e.class}: #{e.message}")
+    diagnostic = "#{e.class}: #{e.message}"
+    Rails.logger.error("SIGNUP_ERROR #{diagnostic}")
     Rails.logger.error(e.backtrace.first(10).join("\n")) if e.backtrace
-    render :json => {"message" => "server_error"}, :status => 500
+    STDOUT.sync = true
+    puts("SIGNUP_ERROR #{diagnostic}")
+    puts(e.backtrace.first(10).join("\n")) if e.backtrace
+    render :json => {"message" => "server_error", "error" => diagnostic}, :status => 500
   end
 
   def verify_email
