@@ -17,6 +17,7 @@ class ApplicationController < ActionController::Base
       return
     end
     @current_user = User.find_by(id: session[:user_id]) if session[:user_id].present?
+    @profile_songs = @profile_user.songs.order("created_at DESC")
   end
 
   def edit_profile
