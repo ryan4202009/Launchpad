@@ -39,8 +39,6 @@ var BackendSpace = new function(){
             $("#login_form").hide();
             $("#gray_background").hide();
             window.location.reload();
-          } else if(data.message === "unverified") {
-            alert("Please verify your email using the link we sent before logging in.");
           } else {
             alert("Login failed. Check your username and password.");
           }
@@ -68,13 +66,12 @@ var BackendSpace = new function(){
         },
         headers: authHeaders(),
         success: function(data) {
-          if(data.message === "verification_sent") {
-            $("#signup_message").text("Account created! Check your inbox for a verification link, then log in.");
+          if(data.message === "success") {
+            $("#signup_message").text("Account created! You are now logged in.");
             $("#signup_username, #signup_email, #signup_password, #signup_password_confirm").val("");
+            window.location.reload();
           } else if(data.message === "password_short") {
             $("#signup_message").text("Use a password with at least 8 characters.");
-          } else if(data.message === "email_failed") {
-            $("#signup_message").text("Your account was created, but the verification email could not be sent. Please try again later or contact the site owner.");
           } else if(data.message === "invalid") {
             $("#signup_message").text((data.errors || ["Please check your details."]).join(" "));
           } else {
