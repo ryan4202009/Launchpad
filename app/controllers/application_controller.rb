@@ -22,6 +22,9 @@ class ApplicationController < ActionController::Base
     else
       render :json => {"message" => "failed"}
     end
+  rescue StandardError => e
+    Rails.logger.error("LOGIN_ERROR #{e.class}: #{e.message}")
+    render :json => {"message" => "server_error"}, :status => 500
   end
 
   def signup
@@ -45,6 +48,10 @@ class ApplicationController < ActionController::Base
     else
       render :json => {"message" => "invalid", "errors" => @user.errors.full_messages}
     end
+  rescue StandardError => e
+    Rails.logger.error("SIGNUP_ERROR #{e.class}: #{e.message}")
+    Rails.logger.error(e.backtrace.first(10).join("\n")) if e.backtrace
+    render :json => {"message" => "server_error"}, :status => 500
   end
 
   def verify_email
