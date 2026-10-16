@@ -199,3 +199,42 @@
 #account_nav a:hover {
   text-decoration: underline;
 }
+
+
+/* Top-right login and account actions */
+#top_account_actions {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+#top_account_actions .top_account_button {
+  display: inline-block;
+  border: 1px solid #7654b5;
+  border-radius: 6px;
+  background: #281747;
+  color: #fff;
+  padding: 9px 13px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+#top_account_actions .top_account_button:hover {
+  background: #493071;
+  text-decoration: none;
+}
+@media (max-width: 600px) {
+  #top_account_actions {
+    position: relative;
+    top: auto;
+    right: auto;
+    justify-content: center;
+    margin: 10px auto 16px;
+  }
+}
