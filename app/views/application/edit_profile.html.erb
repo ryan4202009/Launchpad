@@ -15,7 +15,21 @@
       </div>
     <% end %>
 
-    <%= form_tag(edit_profile_path, method: :post, class: "profile_form", authenticity_token: true) do %>
+    <%= form_tag(edit_profile_path, method: :post, class: "profile_form", authenticity_token: true, multipart: true) do %>
+      <label>Profile picture</label>
+      <div class="profile_avatar_preview">
+        <% if @user.avatar_data.present? %>
+          <img src="<%= @user.avatar_data %>" alt="Current profile picture" class="profile_avatar_image" />
+        <% else %>
+          <div class="profile_avatar" aria-hidden="true"><%= @user.username.to_s[0, 1].to_s.upcase %></div>
+        <% end %>
+      </div>
+      <%= file_field_tag :avatar, accept: "image/png,image/jpeg,image/gif,image/webp" %>
+      <p class="profile_hint">JPG, PNG, GIF, or WebP. Maximum file size: 2 MB.</p>
+      <% if @user.avatar_data.present? %>
+        <label class="profile_checkbox_label"><%= check_box_tag :remove_avatar, "1", false %> Remove current picture</label>
+      <% end %>
+
       <label for="profile_username">Username</label>
       <%= text_field_tag :username, @user.username, id: "profile_username", maxlength: 40, required: true, autocomplete: "username" %>
 
