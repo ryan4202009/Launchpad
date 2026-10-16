@@ -80,7 +80,9 @@ var BackendSpace = new function(){
         },
         error: function(xhr, textStatus, errorThrown) {
           console.error("Signup request failed:", xhr.status, textStatus, errorThrown, xhr.responseText);
-          if(xhr.status === 422) {
+          if(xhr.responseJSON && xhr.responseJSON.error) {
+            $("#signup_message").text("Signup error: " + xhr.responseJSON.error);
+          } else if(xhr.status === 422) {
             $("#signup_message").text("The security check failed. Refresh the page (Ctrl+F5) and try again.");
           } else if(xhr.status === 500) {
             $("#signup_message").text("The server had an error creating your account (500). Please tell the site owner.");
