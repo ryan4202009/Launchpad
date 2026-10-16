@@ -50,6 +50,7 @@ class ApplicationController < ActionController::Base
     end
   rescue StandardError => e
     diagnostic = "#{e.class}: #{e.message}"
+    diagnostic += " (at #{e.backtrace.first})" if e.backtrace && e.backtrace.first
     Rails.logger.error("SIGNUP_ERROR #{diagnostic}")
     Rails.logger.error(e.backtrace.first(10).join("\n")) if e.backtrace
     STDOUT.sync = true
