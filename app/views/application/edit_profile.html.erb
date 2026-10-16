@@ -15,7 +15,7 @@
       </div>
     <% end %>
 
-    <%= form_tag(edit_profile_path, method: :post, class: "profile_form") do %>
+    <%= form_tag(edit_profile_path, method: :post, class: "profile_form", authenticity_token: true) do %>
       <label for="profile_username">Username</label>
       <%= text_field_tag :username, @user.username, id: "profile_username", maxlength: 40, required: true, autocomplete: "username" %>
 
@@ -25,6 +25,6 @@
 
       <%= submit_tag "Save profile", class: "profile_action" %>
     <% end %>
-    <a class="profile_back" href="<%= user_profile_path(username: @user.username) %>">Cancel</a>
+    <a class="profile_back" data-no-turbolink="true" href="<%= user_profile_path(username: @user.username) %>">Cancel</a>
   </div>
 </div>
