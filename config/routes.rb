@@ -13,6 +13,7 @@ Rails.application.routes.draw do
 
   post "/create_song" => "song#create"
   post "/view_all_songs" => "song#view_all"
+  get "/saved_songs/:id" => "song#show_public", as: :public_saved_song
 
   get "/google13ecc4458e525973" => "application#google13ecc4458e525973"
 end
