@@ -51,6 +51,9 @@ class ApplicationController < ActionController::Base
   rescue StandardError => e
     diagnostic = "#{e.class}: #{e.message}"
     diagnostic += " (at #{e.backtrace.first})" if e.backtrace && e.backtrace.first
+    # Include caller frames: the first BCrypt frame alone does not identify which
+    # application operation passed BCrypt an invalid hash.
+    diagnostic += " | called from: #{e.backtrace[1,4].join(" <- ")}" if e.backtrace && e.backtrace.length > 1
     Rails.logger.error("SIGNUP_ERROR #{diagnostic}")
     Rails.logger.error(e.backtrace.first(10).join("\n")) if e.backtrace
     STDOUT.sync = true
