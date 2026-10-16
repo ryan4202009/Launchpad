@@ -78,8 +78,17 @@ var BackendSpace = new function(){
             $("#signup_message").text("Could not create the account. Please try again.");
           }
         },
-        error: function() {
-          $("#signup_message").text("Could not create the account. Please try again.");
+        error: function(xhr, textStatus, errorThrown) {
+          console.error("Signup request failed:", xhr.status, textStatus, errorThrown, xhr.responseText);
+          if(xhr.status === 422) {
+            $("#signup_message").text("The security check failed. Refresh the page (Ctrl+F5) and try again.");
+          } else if(xhr.status === 500) {
+            $("#signup_message").text("The server had an error creating your account (500). Please tell the site owner.");
+          } else if(xhr.status === 0) {
+            $("#signup_message").text("Could not reach the server. Check your connection and try again.");
+          } else {
+            $("#signup_message").text("Signup failed (HTTP " + xhr.status + "). Please try again.");
+          }
         },
         complete: function() {
           $("#submit_signup").text("Sign up").css("pointer-events", "auto");
