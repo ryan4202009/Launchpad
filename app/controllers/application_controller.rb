@@ -40,13 +40,30 @@ class ApplicationController < ActionController::Base
       bio: params[:bio].to_s.strip
     )
 
+    # Accept small, common image formats and store a data URI so uploads work
+    # without an external image host or writable persistent filesystem.
+    avatar = params[:avatar]
+    if params[:remove_avatar] == "1"
+      @user.avatar_data = nil
+    elsif avatar.respond_to?(:read) && avatar.size.to_i > 0
+      allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+      if !allowed_types.include?(avatar.content_type.to_s)
+        @user.errors.add(:avatar, "must be a JPG, PNG, GIF, or WebP image")
+      elsif avatar.size.to_i > 2 * 1024 * 1024
+        @user.errors.add(:avatar, "must be 2 MB or smaller")
+      else
+        encoded = Base64.strict_encode64(avatar.read)
+        @user.avatar_data = "data:#{avatar.content_type};base64,#{encoded}"
+      end
+    end
+
     # Keep the user's entered values on the form and explain limits before saving.
     @user.errors.add(:username, "is too long (maximum is 40 characters)") if @user.username.to_s.length > 40
     @user.errors.add(:bio, "is too long (maximum is 500 characters)") if @user.bio.to_s.length > 500
 
     if @user.errors.any?
       render "edit_profile"
-    elsif @user.update_attributes(username: @user.username, bio: @user.bio)
+    elsif @user.update_attributes(username: @user.username, bio: @user.bio, avatar_data: @user.avatar_data)
       redirect_to user_profile_path(username: @user.username), notice: "Profile updated!"
     else
       render "edit_profile"
