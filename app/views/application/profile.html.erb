@@ -1,0 +1,22 @@
+<div class="profile_page">
+  <div class="profile_card">
+    <div class="profile_avatar" aria-hidden="true"><%= @profile_user.username.to_s[0, 1].to_s.upcase %></div>
+    <p class="profile_eyebrow">LAUNCHPAD PLAYER</p>
+    <h1><%= @profile_user.username %></h1>
+    <p class="profile_joined">Member since <%= @profile_user.created_at.strftime("%B %Y") %></p>
+
+    <div class="profile_bio">
+      <h2>About</h2>
+      <% if @profile_user.bio.present? %>
+        <p><%= simple_format(h(@profile_user.bio)) %></p>
+      <% else %>
+        <p class="profile_muted">This player hasn't added a bio yet.</p>
+      <% end %>
+    </div>
+
+    <% if @current_user && @current_user.id == @profile_user.id %>
+      <a class="profile_action" href="<%= edit_profile_path %>">Edit profile</a>
+    <% end %>
+    <a class="profile_back" href="<%= root_path %>">← Back to Launchpad</a>
+  </div>
+</div>

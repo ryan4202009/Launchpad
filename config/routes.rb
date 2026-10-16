@@ -1,6 +1,10 @@
 Rails.application.routes.draw do
   root "application#index"
 
+  get "/profile/edit" => "application#edit_profile", as: :edit_profile
+  post "/profile/edit" => "application#update_profile"
+  get "/users/:username" => "application#profile", as: :user_profile
+
   post "/get_asset_path" => "application#getAssetUrl"
   post "/login" => "application#login"
   post "/signup" => "application#signup"
