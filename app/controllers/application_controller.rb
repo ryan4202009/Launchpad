@@ -37,6 +37,7 @@ class ApplicationController < ActionController::Base
     @user.username = params[:username].to_s.strip
     @user.bio = params[:bio].to_s.strip
 
+    # Run model validations first, then enforce profile field limits.
     @user.valid?
     @user.errors.add(:username, "is too long (maximum is 40 characters)") if @user.username.to_s.length > 40
     @user.errors.add(:bio, "is too long (maximum is 500 characters)") if @user.bio.to_s.length > 500
@@ -47,7 +48,6 @@ class ApplicationController < ActionController::Base
       render "edit_profile"
     end
   end
-
   def logout
     session[:user_id] = nil
     redirect_to "/"
