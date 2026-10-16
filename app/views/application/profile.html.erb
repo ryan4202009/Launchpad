@@ -15,8 +15,8 @@
     </div>
 
     <% if @current_user && @current_user.id == @profile_user.id %>
-      <a class="profile_action" href="<%= edit_profile_path %>">Edit profile</a>
+      <a class="profile_action" data-no-turbolink="true" href="<%= edit_profile_path %>">Edit profile</a>
     <% end %>
-    <a class="profile_back" href="<%= root_path %>">← Back to Launchpad</a>
+    <a class="profile_back" data-no-turbolink="true" href="<%= root_path %>">← Back to Launchpad</a>
   </div>
 </div>
