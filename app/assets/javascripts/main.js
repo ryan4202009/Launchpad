@@ -9,7 +9,7 @@ $(document).ready(function(){
 
     // A profile's "Use song" link returns here with a chart ID. Wait until the
     // soundboard/editor is ready, then load that saved chart into the editor.
-    var requestedSong = window.location.search.match(/[?&]load_song_id=(\\d+)/);
+    var requestedSong = window.location.search.match(/[?&]load_song_id=(\d+)/);
     if (requestedSong) {
         var requestedSongId = requestedSong[1];
         var waitForEditor = setInterval(function() {
