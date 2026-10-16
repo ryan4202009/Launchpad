@@ -1,4 +1,13 @@
 <h1>Online Launchpad</h1>
+<div id="top_account_actions">
+  <% if @current_user %>
+    <a class="top_account_button" href="<%= user_profile_path(username: @current_user.username) %>">My Profile</a>
+    <a class="top_account_button" href="<%= edit_profile_path %>">Edit Profile</a>
+    <a class="top_account_button" href="<%= logout_path %>">Sign Out</a>
+  <% else %>
+    <button type="button" id="open_login_button" class="top_account_button" onclick="document.getElementById('login_form').style.display='block'; document.getElementById('gray_background').style.display='block';">Log In / Sign Up</button>
+  <% end %>
+</div>
 <% if flash[:notice].present? %><div id="auth_notice"><%= flash[:notice] %></div><% end %>
 
 <% if @current_user %>
