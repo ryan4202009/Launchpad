@@ -15,3 +15,8 @@
 /log/*
 !/log/.keep
 /tmp
+
+# Never commit local environment files or database credentials.
+.env
+.env.*
+!.env.example
