@@ -105,8 +105,11 @@ RUN bundle _1.17.3_ install --local --jobs 1 --retry 0
 # Copy application
 COPY . .
 
-ENV RAILS_ENV=development
+ENV RAILS_ENV=production \
+    RAILS_SERVE_STATIC_FILES=true
 
 EXPOSE 3000
+
+RUN SECRET_KEY_BASE=build-only-placeholder-secret-key-base-00000000000000000000000000000000 bundle exec rake assets:precompile
 
 CMD ["sh", "-c", "bundle exec rake db:migrate && bundle exec rails server -b 0.0.0.0 -p ${PORT:-3000}"]
