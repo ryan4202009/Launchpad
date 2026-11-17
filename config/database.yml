@@ -1,25 +1,22 @@
-# SQLite version 3.x
-#   gem install sqlite3
-#
-#   Ensure the SQLite 3 gem is defined in your Gemfile
-#   gem 'sqlite3'
-#
+# Development and test remain local SQLite databases.
 default: &default
-  adapter: sqlite3
   pool: 5
   timeout: 5000
 
 development:
   <<: *default
+  adapter: sqlite3
   database: db/development.sqlite3
 
-# Warning: The database defined as "test" will be erased and
-# re-generated from your development database when you run "rake".
-# Do not set this db to the same as development or production.
 test:
   <<: *default
+  adapter: sqlite3
   database: db/test.sqlite3
 
+# Production uses the PostgreSQL connection supplied in DATABASE_URL.
+# Set DATABASE_URL to the pooled Neon connection string in the hosting
+# provider's secret/environment-variable settings. Never commit it here.
 production:
   <<: *default
-  database: db/production.sqlite3
+  adapter: postgresql
+  encoding: unicode
